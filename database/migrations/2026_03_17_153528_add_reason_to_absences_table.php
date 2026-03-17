@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Illuminate\Database\Schema\Blueprint $table) {
-            $table->id();
-            $table->foreignId('department_id')->constrained()->cascadeOnDelete();
-            $table->string('name');
-            $table->string('location');
-            $table->timestamps();
+        Schema::table('absences', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->string('reason')->nullable()->after('type');
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::table('absences', function (Blueprint $table) {
+            //
+        });
     }
 };
