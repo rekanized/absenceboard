@@ -23,6 +23,7 @@ class PersonnelSeeder extends Seeder
 
         foreach ($depts as $deptName => $locations) {
             $dept = Department::create(['name' => $deptName]);
+            $users = collect();
             
             for ($i = 0; $i < 5; $i++) {
                 $name = $firstNames[array_rand($firstNames)] . ' ' . $lastNames[array_rand($lastNames)];
@@ -30,6 +31,8 @@ class PersonnelSeeder extends Seeder
                     'name' => $name,
                     'location' => $locations[array_rand($locations)],
                 ]);
+
+                $users->push($user);
 
 
                 // Random absences
@@ -43,21 +46,13 @@ class PersonnelSeeder extends Seeder
                     }
                 }
             }
+
+            $manager = $users->first();
+
+            $users
+                ->skip(1)
+                ->each(fn (User $user) => $user->update(['manager_id' => $manager?->id]));
         }
 
-        // Add the specific users from the reference for continuity
-        $ops = Department::where('name', 'Operations')->first();
-        $olle = $ops->users()->create([
-            'name' => 'Olle Klanger Nyrén',
-            'location' => 'Stockholm',
-        ]);
-
-        $dates = ['2026-07-06', '2026-07-07', '2026-07-08', '2026-07-09', '2026-07-10'];
-        foreach ($dates as $date) {
-            $olle->absences()->create([
-                'date' => $date,
-                'type' => 'S',
-            ]);
-        }
     }
 }

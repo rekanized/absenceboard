@@ -55,7 +55,6 @@
                 direction: ltr;
                 -webkit-font-smoothing: antialiased;
             }
-
             .app-brand {
                 display: flex;
                 align-items: center;

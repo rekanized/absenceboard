@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leaveboardGradient" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#leaveboardGradient)"/>
+  <rect x="14" y="18" width="36" height="30" rx="9" fill="white" fill-opacity="0.14" stroke="white" stroke-width="2.5"/>
+  <path d="M14 27H50" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M23 12V22" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <path d="M41 12V22" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 38L29 43L41.5 31" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="46" cy="20" r="3" fill="#BFDBFE"/>
+</svg>
