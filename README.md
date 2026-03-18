@@ -33,26 +33,55 @@ LeaveBoard gives teams a shared planning surface for time off and availability.
 - PHP 8.3+
 - Laravel 13
 - Livewire 4
-- Blade, Alpine-style interactions, and vanilla CSS
-- Vite for frontend assets
+- Blade, Livewire interactions, and vanilla CSS
+- Handcrafted styles served from `public/app.css`
 - PHPUnit 12
 
 ## Quick Start
 
+LeaveBoard does not use Node.js, npm, Vite, Tailwind, or Bootstrap. Local setup is PHP-, Composer-, and vanilla-CSS-only.
+
+### Requirements
+
+- PHP 8.3 or newer
+- Composer
+- SQLite
+
+### Local Setup
+
 ```bash
 composer install
 cp .env.example .env
-php artisan key:generate
 touch database/database.sqlite
+php artisan key:generate
 php artisan migrate:fresh --seed
-npm install
-npm run build
+php artisan storage:link
 ```
 
-Run the app locally:
+The default `.env.example` uses SQLite, so the commands above are enough for a working local install.
+
+Start the local server:
 
 ```bash
-composer run dev
+php artisan serve
+```
+
+Then open `http://127.0.0.1:8000`.
+
+### What You Get After Seeding
+
+- Departments, users, manager relationships, absence options, holidays, and sample absence history
+- Automatic session fallback to the first available user on first visit
+- A working planner at `/`
+- A current-user profile page at `/profile`
+- An internal admin workspace at `/admin`
+
+### Useful Commands
+
+Refresh the database with seed data:
+
+```bash
+php artisan migrate:fresh --seed
 ```
 
 Run the test suite:
@@ -60,6 +89,35 @@ Run the test suite:
 ```bash
 composer test
 ```
+
+Clear cached framework state after changing environment or route/config files:
+
+```bash
+php artisan optimize:clear
+```
+
+## Docker
+
+This repository includes a Dockerfile for a simple local container run without any Node tooling.
+
+Build the image:
+
+```bash
+docker build -t leaveboard .
+```
+
+Run the container:
+
+```bash
+docker run --rm -p 8000:8000 leaveboard
+```
+
+Then open `http://127.0.0.1:8000`.
+
+Notes:
+
+- The container seeds a SQLite database during image build.
+- Rebuild the image after code or database-seed changes.
 
 ## Seeded Demo Setup
 

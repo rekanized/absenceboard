@@ -26,15 +26,15 @@ LeaveBoard is an internal leave-planning application built with Laravel and Live
 
 ## Development Commands
 - Install PHP dependencies: `composer install`
-- Install frontend dependencies: `npm install`
-- Start local development: `composer run dev`
+- Prepare local SQLite database: `cp .env.example .env && touch database/database.sqlite && php artisan key:generate`
 - Fresh seed local database: `php artisan migrate:fresh --seed`
+- Start local development: `php artisan serve`
 - Run tests: `composer test`
 
 ## Agent Guidance
 - Keep README.md GitHub-facing and concise.
 - Put implementation detail and project memory in agent docs, not in README.md.
-- Preserve the existing handcrafted CSS and Blade/Livewire structure.
+- Preserve the existing handcrafted vanilla CSS and Blade/Livewire structure.
 - Prefer updating `.agent/context/` when product scope, architecture, or stack changes.
 
 ## Related Context Files

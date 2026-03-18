@@ -5,22 +5,21 @@
 - PHP: 8.3+
 - Reactive UI: Livewire 4
 - Templates: Blade
-- Frontend interactions: Alpine-style JavaScript
+- Frontend interactions: Livewire-driven behavior with vanilla JavaScript where needed
 - Styling: handcrafted vanilla CSS in `public/app.css`
-- Assets: Vite and npm
+- Assets: no Node, npm, or Vite pipeline; styles are served directly from `public/app.css`
 - Testing: PHPUnit 12
 
 ## Development Commands
 - Install PHP packages: `composer install`
-- Install frontend packages: `npm install`
-- Start local development: `composer run dev`
-- Build assets: `npm run build`
+- Prepare a local SQLite setup: `cp .env.example .env && touch database/database.sqlite && php artisan key:generate`
+- Fresh seed local database: `php artisan migrate:fresh --seed`
+- Start local development: `php artisan serve`
 - Run tests: `composer test`
-- Refresh seeded database: `php artisan migrate:fresh --seed`
 
 ## Project Conventions
 - Keep styles in the existing handcrafted CSS approach.
-- Avoid introducing Tailwind, Bootstrap, or jQuery.
+- Avoid introducing Tailwind, Bootstrap, jQuery, or any frontend build pipeline.
 - Prefer minimal Blade and Livewire changes over broad rewrites.
 - Update create-table migrations directly when maintaining a clean greenfield schema.
 - Use `php artisan make:livewire` for new Livewire components.
