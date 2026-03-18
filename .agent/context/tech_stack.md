@@ -1,20 +1,36 @@
-# Tech Stack & Coding Standards
+# Tech Stack and Development Guidance
 
-## Core Technologies
-- **Framework**: [Laravel 11.x](https://laravel.com) (PHP 8.2+)
-- **Frontend Interaction**: [Livewire 3.x](https://livewire.laravel.com) & [Alpine.js](https://alpinejs.dev)
-- **Styling**: Vanilla CSS (no Tailwind/Bootstrap as per project rules)
-- **Icons**: [Material Symbols Outlined](https://fonts.google.com/icons) (custom `.icon` class implementation)
-- **Database**: PHP SQLite / MySQL
+## Stack
+- Framework: Laravel 13
+- PHP: 8.3+
+- Reactive UI: Livewire 4
+- Templates: Blade
+- Frontend interactions: Alpine-style JavaScript
+- Styling: handcrafted vanilla CSS in `public/app.css`
+- Assets: Vite and npm
+- Testing: PHPUnit 12
 
-## Development Standards
-- **Package Management**: **Composer ONLY**. NPM is not used or allowed for build steps.
-- **CSS Strategy**: Reusable Vanilla CSS classes. Avoid utility-first frameworks.
-- **Livewire**: Always create components using `php artisan make:livewire`.
-- **Media**: All iconography must use the `.icon` class with Material Symbol names.
-- **AI Context**: Always maintain the `.agent/context` files for continuity.
+## Development Commands
+- Install PHP packages: `composer install`
+- Install frontend packages: `npm install`
+- Start local development: `composer run dev`
+- Build assets: `npm run build`
+- Run tests: `composer test`
+- Refresh seeded database: `php artisan migrate:fresh --seed`
 
-## Key Components
-- **Layout**: `resources/views/layouts/app.blade.php` (Global styles and font imports)
-- **Main View**: `resources/views/livewire/vacation-planner.blade.php`
-- **Controller**: `app/Livewire/VacationPlanner.php`
+## Project Conventions
+- Keep styles in the existing handcrafted CSS approach.
+- Avoid introducing Tailwind, Bootstrap, or jQuery.
+- Prefer minimal Blade and Livewire changes over broad rewrites.
+- Update create-table migrations directly when maintaining a clean greenfield schema.
+- Use `php artisan make:livewire` for new Livewire components.
+
+## Important Files
+- `app/Livewire/VacationPlanner.php`
+- `app/Http/Controllers/AdminController.php`
+- `app/Http/Controllers/ProfileController.php`
+- `app/Support/HolidayCalendar.php`
+- `resources/views/livewire/vacation-planner.blade.php`
+- `resources/views/admin/index.blade.php`
+- `resources/views/profile/show.blade.php`
+- `public/app.css`

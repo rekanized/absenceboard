@@ -61,6 +61,8 @@ class PageRenderingEagerLoadingTest extends TestCase
             ->get(route('planner'))
             ->assertOk()
             ->assertSeeText('Ella Employee')
+            ->assertSeeText('Attester')
+            ->assertSeeText('Maja Manager will attest this absence.')
             ->assertSeeText('Add absence')
             ->assertSee('Apply absence', false);
 

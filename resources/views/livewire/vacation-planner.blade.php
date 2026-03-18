@@ -10,6 +10,7 @@
         availableManagers: @js($managers->values()),
         editableUserId: @js($currentUser?->id),
         initialAbsenceType: @js($absenceType),
+        editingRequestUuid: @entangle('editingRequestUuid').live,
         selectedDepartments: @entangle('selectedDepartments').live,
         selectedSites: @entangle('selectedSites').live,
         selectedManagers: @entangle('selectedManagers').live
@@ -161,25 +162,34 @@
                         Me
                     </button>
                 @endif
-                <button type="button" wire:click="previousYear" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">
+                <x-loading-button type="button" wire:click="previousYear" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">
                     −1Y
-                </button>
-                <button type="button" wire:click="previousMonth" class="btn btn-secondary" style="padding: 6px 12px;">
+                </x-loading-button>
+                <x-loading-button type="button" wire:click="previousMonth" class="btn btn-secondary" style="padding: 6px 12px;">
                     <span class="icon" style="font-size: 18px;">chevron_left</span>
-                </button>
-                <button type="button" wire:click="goToToday" class="btn btn-secondary" style="padding: 6px 16px; font-size: 13px;">
+                </x-loading-button>
+                <x-loading-button type="button" wire:click="goToToday" class="btn btn-secondary" style="padding: 6px 16px; font-size: 13px;">
                     Today
-                </button>
-                <button type="button" wire:click="nextMonth" class="btn btn-secondary" style="padding: 6px 12px;">
+                </x-loading-button>
+                <x-loading-button type="button" wire:click="nextMonth" class="btn btn-secondary" style="padding: 6px 12px;">
                     <span class="icon" style="font-size: 18px;">chevron_right</span>
-                </button>
-                <button type="button" wire:click="nextYear" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">
+                </x-loading-button>
+                <x-loading-button type="button" wire:click="nextYear" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">
                     +1Y
-                </button>
+                </x-loading-button>
             </div>
         </div>
 
         <div class="planner-content">
+            @php
+                $editingRequest = $editingRequestUuid
+                    ? $pendingRequests->firstWhere('request_uuid', $editingRequestUuid)
+                    : null;
+                $editingRequestOption = $editingRequest
+                    ? $absenceOptionsByCode->get($editingRequest['type'])
+                    : null;
+            @endphp
+
             @if ($currentUser)
                 <section class="planner-mobile-entry" x-cloak>
                     <div class="planner-mobile-entry-head">
@@ -232,7 +242,7 @@
 
                         <div class="request-actions">
                             <button type="button" class="btn btn-secondary" @click="resetMobileQuickAdd()">Cancel</button>
-                            <button type="button" class="btn btn-primary" :disabled="!mobileQuickAddReady" @click="submitMobileQuickAdd()">Apply absence</button>
+                            <x-loading-button type="button" loading-target="applyAbsenceSpan" class="btn btn-primary" x-bind:disabled="!mobileQuickAddReady" @click="submitMobileQuickAdd()">Apply absence</x-loading-button>
                         </div>
                     </div>
                 </section>
@@ -251,7 +261,6 @@
                                 @foreach($pendingRequests as $request)
                                     @php
                                         $option = $absenceOptionsByCode->get($request['type']);
-                                        $isEditing = $editingRequestUuid === $request['request_uuid'];
                                     @endphp
                                     <article class="request-card" wire:key="pending-request-{{ $request['request_uuid'] }}">
                                         <div class="request-card-head">
@@ -269,48 +278,14 @@
                                             <div style="font-size: 13px; color: var(--text-main);">{{ $request['reason'] }}</div>
                                         @endif
 
-                                        @if($isEditing)
-                                            <div class="request-edit-form">
-                                                <p class="request-helper">Adjust the date range, absence type, or reason before your manager reviews this request.</p>
-
-                                                <div class="request-edit-grid">
-                                                    <label class="request-field">
-                                                        <span>Start date</span>
-                                                        <input type="date" class="request-input" wire:model.live="editingRequestStartDate">
-                                                    </label>
-
-                                                    <label class="request-field">
-                                                        <span>End date</span>
-                                                        <input type="date" class="request-input" wire:model.live="editingRequestEndDate">
-                                                    </label>
-
-                                                    <label class="request-field request-field-full">
-                                                        <span>Absence type</span>
-                                                        <select class="request-input" wire:model.live="editingRequestType">
-                                                            @foreach($absenceOptions as $absenceOption)
-                                                                <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </label>
-
-                                                    <label class="request-field request-field-full">
-                                                        <span>Reason</span>
-                                                        <textarea class="request-textarea" wire:model.live="editingRequestReason" rows="3" placeholder="Add a reason (optional)..."></textarea>
-                                                    </label>
-                                                </div>
-
-                                                <div class="request-actions">
-                                                    <button type="button" class="btn btn-secondary" wire:click="cancelEditingRequest">Cancel</button>
-                                                    <button type="button" class="btn btn-danger" wire:click="deletePendingRequest('{{ $request['request_uuid'] }}')">Delete request</button>
-                                                    <button type="button" class="btn btn-primary" wire:click="updatePendingRequest">Save changes</button>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <div class="request-actions">
-                                                <button type="button" class="btn btn-secondary" wire:click="startEditingRequest('{{ $request['request_uuid'] }}')">Edit</button>
-                                                <button type="button" class="btn btn-danger" wire:click="deletePendingRequest('{{ $request['request_uuid'] }}')">Delete</button>
-                                            </div>
+                                        @if($request['attester_name'])
+                                            <div style="font-size: 13px; color: var(--text-muted);">Waiting for {{ $request['attester_name'] }}</div>
                                         @endif
+
+                                        <div class="request-actions">
+                                            <x-loading-button type="button" loading-target="startEditingRequest('{{ $request['request_uuid'] }}')" class="btn btn-secondary" @click="openPendingRequestEditor('{{ $request['request_uuid'] }}')">Edit</x-loading-button>
+                                            <x-loading-button type="button" wire:click="deletePendingRequest('{{ $request['request_uuid'] }}')" class="btn btn-danger">Delete</x-loading-button>
+                                        </div>
                                     </article>
                                 @endforeach
                             </div>
@@ -345,9 +320,22 @@
                                             <div style="font-size: 13px; color: var(--text-main);">{{ $request['reason'] }}</div>
                                         @endif
 
+                                        <label class="request-field request-field-full">
+                                            <span>Rejection reason</span>
+                                            <textarea
+                                                class="request-textarea"
+                                                wire:model.blur="managerDecisionReasons.{{ $request['request_uuid'] }}"
+                                                placeholder="Required when rejecting. Not used for approvals."
+                                            ></textarea>
+                                        </label>
+
+                                        @error('managerDecisionReasons.' . $request['request_uuid'])
+                                            <div style="font-size: 12px; color: #b91c1c;">{{ $message }}</div>
+                                        @enderror
+
                                         <div class="request-actions">
-                                            <button type="button" class="btn btn-secondary" wire:click="rejectRequest('{{ $request['request_uuid'] }}')">Reject</button>
-                                            <button type="button" class="btn btn-primary" wire:click="approveRequest('{{ $request['request_uuid'] }}')">Approve</button>
+                                            <x-loading-button type="button" wire:click="rejectRequest('{{ $request['request_uuid'] }}')" class="btn btn-secondary">Reject</x-loading-button>
+                                            <x-loading-button type="button" wire:click="approveRequest('{{ $request['request_uuid'] }}')" class="btn btn-primary">Approve</x-loading-button>
                                         </div>
                                     </article>
                                 @endforeach
@@ -493,37 +481,118 @@
     </div>
 
     <!-- Selection Modal -->
-    <div class="modal-overlay" x-show="showModal" x-cloak x-transition>
-        <div class="modal-content" @click.away="reset()">
-            <h2 class="modal-title">Define Absence</h2>
+    <div class="modal-overlay" x-show="isModalOpen" x-cloak x-transition x-on:keydown.escape.window="closeModal()">
+        <div class="modal-content" :class="{ 'request-edit-modal': isEditModalOpen }" @click.away="closeModal()">
+            <template x-if="isEditModalOpen">
+                <div>
+                    <div class="request-edit-modal-head">
+                        <div>
+                            <h2 class="modal-title">Edit pending request</h2>
+                            <p class="request-helper request-edit-modal-copy">Adjust the date range, absence type, or reason before your manager reviews this request.</p>
+                        </div>
+                        <button type="button" class="btn btn-secondary request-edit-close" @click="closeModal()">Close</button>
+                    </div>
 
-            <div class="selection-summary" x-show="selectedDates.length > 0">
-                <div class="selection-summary-header">
-                    <span class="selection-summary-title">Selected days</span>
-                    <span x-text="selectionStatsLabel"></span>
+                    @if($editingRequest)
+                        <div class="selection-summary">
+                            <div class="selection-summary-header">
+                                <span class="selection-summary-title">Current request</span>
+                                <span>{{ $editingRequest['date_label'] }} · {{ $editingRequest['date_count'] }} day(s)</span>
+                            </div>
+
+                            <div class="selection-chip-list">
+                                <span class="selection-chip">
+                                    <span class="chip-dot" style="background: {{ $editingRequestOption?->color ?? '#94a3b8' }};"></span>
+                                    {{ $editingRequestOption?->label ?? $editingRequest['type'] }}
+                                </span>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="request-edit-form">
+                        <div class="request-edit-grid">
+                            <label class="request-field">
+                                <span>Start date</span>
+                                <input type="date" class="request-input" wire:model.live="editingRequestStartDate">
+                            </label>
+
+                            <label class="request-field">
+                                <span>End date</span>
+                                <input type="date" class="request-input" wire:model.live="editingRequestEndDate">
+                            </label>
+
+                            <label class="request-field request-field-full">
+                                <span>Absence type</span>
+                                <select class="request-input" wire:model.live="editingRequestType">
+                                    @foreach($absenceOptions as $absenceOption)
+                                        <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
+                            <label class="request-field request-field-full">
+                                <span>Reason</span>
+                                <textarea class="request-textarea" wire:model.live="editingRequestReason" rows="4" placeholder="Add a reason (optional)..."></textarea>
+                            </label>
+                        </div>
+
+                        <div class="modal-actions request-edit-modal-actions">
+                            <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                            <x-loading-button type="button" loading-target="deleteEditingRequest" wire:click="deleteEditingRequest" class="btn btn-danger">Delete request</x-loading-button>
+                            <x-loading-button type="button" wire:click="updatePendingRequest" class="btn btn-primary">Save changes</x-loading-button>
+                        </div>
+                    </div>
                 </div>
+            </template>
 
-                <div class="selection-chip-list">
-                    <template x-for="span in selectedDateSpans" :key="span.key">
-                        <span class="selection-chip" x-text="span.label"></span>
-                    </template>
+            <template x-if="!isEditModalOpen">
+                <div>
+                    <h2 class="modal-title">Define Absence</h2>
+
+                    <div class="selection-summary" x-show="selectedDates.length > 0">
+                        <div class="selection-summary-header">
+                            <span class="selection-summary-title">Selected days</span>
+                            <span x-text="selectionStatsLabel"></span>
+                        </div>
+
+                        <div class="selection-chip-list">
+                            <template x-for="span in selectedDateSpans" :key="span.key">
+                                <span class="selection-chip" x-text="span.label"></span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="selection-summary">
+                        <div class="selection-summary-header">
+                            <span class="selection-summary-title">Attester</span>
+                        </div>
+
+                        <p class="selection-summary-copy">
+                            @if($currentUser?->manager)
+                                {{ $currentUser->manager->name }} will attest this absence.
+                            @else
+                                No attester needed. This absence will be approved automatically.
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="type-selector">
+                        @foreach($absenceOptions as $option)
+                            <button class="type-btn" :class="{ 'active': absenceType === '{{ $option->code }}' }" @click="absenceType = '{{ $option->code }}'">
+                                <span class="chip-dot" style="background: {{ $option->color }};"></span> {{ $option->label }}
+                            </button>
+                        @endforeach
+                    </div>
+
+                    <textarea class="reason-input" x-model="reason" placeholder="Add a reason (optional)..." rows="3"></textarea>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                        <x-loading-button type="button" loading-target="removeAbsence" class="btn btn-danger" @click="remove()">Clear Selection</x-loading-button>
+                        <x-loading-button type="button" loading-target="applyAbsence" class="btn btn-primary" @click="apply()">Apply Absence</x-loading-button>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="type-selector">
-                @foreach($absenceOptions as $option)
-                    <button class="type-btn" :class="{ 'active': absenceType === '{{ $option->code }}' }" @click="absenceType = '{{ $option->code }}'">
-                        <span class="chip-dot" style="background: {{ $option->color }};"></span> {{ $option->label }}
-                    </button>
-                @endforeach
-            </div>
-
-            <textarea class="reason-input" x-model="reason" placeholder="Add a reason (optional)..." rows="3"></textarea>
-
-            <div class="modal-actions">
-                <button class="btn btn-secondary" @click="reset()">Cancel</button>
-                <button class="btn btn-danger" @click="remove()">Clear Selection</button>
-                <button class="btn btn-primary" @click="apply()">Apply Absence</button>
+            </template>
             </div>
         </div>
     </div>
@@ -538,12 +607,14 @@
                 availableManagers = [],
                 editableUserId = null,
                 initialAbsenceType = null,
+                editingRequestUuid = null,
                 selectedDepartments,
                 selectedSites,
                 selectedManagers,
             }) => ({
                 initialViewDate,
                 editableUserId,
+                editingRequestUuid,
                 currentUserHighlightTimeout: null,
                 currentVisibleMonthLabel: '',
                 isDragging: false,
@@ -741,6 +812,14 @@
                     this.showModal = true;
                 },
 
+                get isEditModalOpen() {
+                    return Boolean(this.editingRequestUuid);
+                },
+
+                get isModalOpen() {
+                    return this.showModal || this.isEditModalOpen;
+                },
+
                 get selectedRange() {
                     if (this.selectionStart === null || this.selectionEnd === null) return [];
                     const start = Math.min(this.selectionStart, this.selectionEnd);
@@ -858,17 +937,36 @@
                         : `${startLabel} to ${endLabel}`;
                 },
 
-                apply() {
-                    if (this.selectedUser === null) return;
-                    const dates = this.selectedDates.map((date) => date.iso);
-                    this.$wire.applyAbsence(this.selectedUser, dates, this.absenceType, this.reason);
+                async openPendingRequestEditor(requestUuid) {
+                    if (!requestUuid) {
+                        return;
+                    }
+
+                    this.showModal = false;
+                    await this.$wire.startEditingRequest(requestUuid);
+                },
+
+                closeModal() {
+                    if (this.isEditModalOpen) {
+                        this.$wire.cancelEditingRequest();
+
+                        return;
+                    }
+
                     this.reset();
                 },
 
-                remove() {
+                async apply() {
                     if (this.selectedUser === null) return;
                     const dates = this.selectedDates.map((date) => date.iso);
-                    this.$wire.removeAbsence(this.selectedUser, dates);
+                    await this.$wire.applyAbsence(this.selectedUser, dates, this.absenceType, this.reason);
+                    this.reset();
+                },
+
+                async remove() {
+                    if (this.selectedUser === null) return;
+                    const dates = this.selectedDates.map((date) => date.iso);
+                    await this.$wire.removeAbsence(this.selectedUser, dates);
                     this.reset();
                 },
 
@@ -882,12 +980,12 @@
                     this.showMobileQuickAdd = true;
                 },
 
-                submitMobileQuickAdd() {
+                async submitMobileQuickAdd() {
                     if (!this.mobileQuickAddReady || this.editableUserId === null) {
                         return;
                     }
 
-                    this.$wire.applyAbsenceSpan(
+                    await this.$wire.applyAbsenceSpan(
                         this.editableUserId,
                         this.mobileStartDate,
                         this.mobileEndDate,

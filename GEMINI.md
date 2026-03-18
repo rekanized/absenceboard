@@ -1,89 +1,43 @@
-# Project Context
+# LeaveBoard Agent Context
 
-## Product summary
-LeaveBoard is an internal leave-planning application built with Laravel and Livewire. The current product combines a multi-month visual planner, a current-user profile workspace, and a lightweight admin area for impersonation, branding, and absence-type management.
+## Product Summary
+LeaveBoard is an internal leave-planning application built with Laravel and Livewire. It combines a multi-month absence planner, a current-user profile workspace, and a lightweight admin area for absence-option and application settings management.
 
-## Current functionality
+## Current Scope
+- Planner page with department grouping, filters, drag/range selection, and holiday markers
+- Approval workflow with pending, approved, and rejected requests
+- Profile page for holiday-country and theme preferences
+- Admin page for impersonation, branding, absence options, and request logs
 
-### Planner
-* Multi-month timeline view based on the selected month plus the following two months.
-* Drag-to-select leave creation for the active session user only.
-* Month and year navigation, plus a jump-to-today action.
-* Expandable department sections with per-day department totals.
-* Live filtering by multiple departments, multiple sites, and personnel name search.
-* Current-user row spotlight and quick jump back to that row.
-* Holiday markers are resolved from the current user's configured holiday country.
+## Important Domain Rules
+- Users with a manager submit requests as `pending`.
+- Users without a manager are auto-approved.
+- Multi-day requests are grouped by `absences.request_uuid`.
+- Rejections require a manager decision reason stored in `absences.decision_reason`.
+- Holiday rendering depends on `users.holiday_country` and `holidays.country_code`.
+- Theme preference is persisted per user and shared across planner, profile, and admin pages.
 
-### Profile
-* `/profile` shows the current active user's profile workspace.
-* Users can update `users.holiday_country` from the profile page.
-* Users can switch their saved light or dark theme from the sidebar navigation and from the profile page.
-* The profile page shows department, site, manager, request summaries, recent request outcomes, and a current-month planner snapshot.
+## Primary Paths
+- `app/Livewire/VacationPlanner.php` - planner state, request creation, filters, approvals, editing
+- `resources/views/livewire/vacation-planner.blade.php` - planner UI
+- `resources/views/profile/show.blade.php` - current-user profile UI
+- `resources/views/admin/index.blade.php` - admin workspace
+- `public/app.css` - main handcrafted stylesheet for shell, planner, profile, and admin
 
-### Approval flow
-* Users can have a manager through `users.manager_id`.
-* Requests submitted by users with a manager are created as `pending`.
-* Requests for users without a manager are auto-approved.
-* Multi-day requests are grouped by `absences.request_uuid`.
-* Request owners can edit or delete pending requests before approval.
-* Managers can approve or reject pending requests for their direct reports.
-* Approval metadata is stored in `absences.status`, `approved_by`, and `approved_at`.
+## Development Commands
+- Install PHP dependencies: `composer install`
+- Install frontend dependencies: `npm install`
+- Start local development: `composer run dev`
+- Fresh seed local database: `php artisan migrate:fresh --seed`
+- Run tests: `composer test`
 
-### Administration
-* `/admin` is a proof-of-concept admin workspace.
-* Supports session-based impersonation of any seeded user.
-* Supports changing the application name via the `settings` table.
-* Supports creating configurable absence options with code, label, color, and sort order.
-* Shows current users, managers, and configured absence options.
-* Uses the same persisted current-user theme and shared sidebar toggle as the planner and profile pages.
+## Agent Guidance
+- Keep README.md GitHub-facing and concise.
+- Put implementation detail and project memory in agent docs, not in README.md.
+- Preserve the existing handcrafted CSS and Blade/Livewire structure.
+- Prefer updating `.agent/context/` when product scope, architecture, or stack changes.
 
-### Holidays and seed data
-* Country-aware holidays are resolved through `App\Support\HolidayCalendar`.
-* Supported holiday calendars currently include SE, DK, NO, FI, DE, GB, and US.
-* Swedish holiday calculations still live in `App\Support\SwedishHolidayCalendar` and are used through the shared resolver.
-* Stored holiday rows are scoped by `holidays.country_code`.
-* Holiday seeding covers a rolling range from current year - 5 to current year + 5 for every supported country.
-* Personnel seeding now assigns a manager to most users in each department.
-* Default absence options are seeded from `AbsenceOptionSeeder`.
-
-## Tech stack & dependencies
-* **Backend:** Laravel 13, PHP 8.3+.
-* **Realtime UI:** Livewire 4.
-* **Frontend behavior:** Alpine-style interactions in Blade plus vanilla JavaScript.
-* **Styling:** Vanilla CSS only.
-* **Icons:** Material Symbols icons via the `.icon` class.
-* **Assets:** Vite is present; npm is used for frontend build/dev commands.
-* **Testing:** PHPUnit 12.
-* **Shared stylesheet:** `public/app.css` is the primary handcrafted stylesheet and is organized by shell, profile, admin, and planner sections.
-
-## Development guidance
-* **PHP dependencies:** Use Composer.
-* **Frontend dependencies and builds:** Use npm only when asset installation or Vite builds are required.
-* **Frontend libraries:** Avoid jQuery.
-* **CSS strategy:** Prefer reusable Vanilla CSS and preserve the existing handcrafted UI style.
-* **UI frameworks:** Do NOT introduce Tailwind CSS or Bootstrap.
-* **Branding:** The shared branded layout uses `public/brand/leaveboard-mark.svg`.
-
-## Important files
-* `app/Livewire/VacationPlanner.php` — planner state, filters, approvals, and request editing.
-* `app/Http/Controllers/AdminController.php` — admin page actions.
-* `app/Http/Controllers/ProfileController.php` — current-user profile page and holiday-country updates.
-* `app/Http/Middleware/EnsureCurrentUser.php` — current-user session bootstrap.
-* `app/Models/Absence.php` — approval-aware absence model.
-* `app/Models/AbsenceOption.php` — configurable leave types.
-* `app/Models/Holiday.php` — stored holiday overrides, keyed by country and date.
-* `app/Models/Setting.php` — persistent app settings.
-* `app/Support/HolidayCalendar.php` — computed country-aware public holidays.
-* `app/Support/SwedishHolidayCalendar.php` — computed Swedish public holidays.
-* `resources/views/livewire/vacation-planner.blade.php` — planner interface.
-* `resources/views/admin/index.blade.php` — admin workspace.
-* `resources/views/profile/show.blade.php` — current-user profile workspace.
-* `resources/views/components/layouts/app.blade.php` — branded shell layout.
-* `public/app.css` — shared application stylesheet with theme tokens and page-level sections.
-
-## Livewire components
-* **Creation:** Prefer `php artisan make:livewire` for new components.
-* **Manual warning:** Be careful when manually creating Livewire file paths; use the real paths under `app/Livewire/...` and `resources/views/livewire/...`.
-
-## Restrictions
-* **No browser:** Never open a browser to view the project.
+## Related Context Files
+- `.agent/context/project_context.md`
+- `.agent/context/architecture.md`
+- `.agent/context/tech_stack.md`

@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('name');
             $table->string('location')->index();
+            $table->string('holiday_country', 2)->default('SE');
+            $table->string('theme_preference', 16)->default('light');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

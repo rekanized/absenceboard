@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('type', 20);
             $table->string('reason')->nullable();
+            $table->text('decision_reason')->nullable();
             $table->string('status', 30)->default('approved')->index();
             $table->uuid('request_uuid')->nullable()->index();
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();

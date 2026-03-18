@@ -48,6 +48,9 @@ class ApprovalFlowTest extends TestCase
 
         $pendingRequests = $component->instance()->render()->getData()['pendingRequests'];
         $this->assertCount(1, $pendingRequests);
+        $this->assertSame('Maja Manager', $pendingRequests->first()['attester_name']);
+
+        $component->assertSeeText('Waiting for Maja Manager');
 
         session(['current_user_id' => $manager->id]);
 
@@ -63,6 +66,47 @@ class ApprovalFlowTest extends TestCase
         $this->assertSame(Absence::STATUS_APPROVED, $absence->status);
         $this->assertSame($manager->id, $absence->approved_by);
         $this->assertNotNull($absence->approved_at);
+        $this->assertNull($absence->decision_reason);
+    }
+
+    public function test_rejecting_a_request_requires_and_stores_a_manager_reason(): void
+    {
+        AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
+
+        $department = Department::create(['name' => 'Operations']);
+        $manager = $department->users()->create(['name' => 'Maja Manager', 'location' => 'Stockholm']);
+        $employee = $department->users()->create(['name' => 'Emil Employee', 'location' => 'Stockholm', 'manager_id' => $manager->id]);
+
+        session(['current_user_id' => $employee->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('applyAbsence', $employee->id, ['2026-07-01', '2026-07-02'], 'S', 'Summer trip');
+
+        $absence = Absence::query()->firstOrFail();
+
+        session(['current_user_id' => $manager->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('rejectRequest', $absence->request_uuid)
+            ->assertHasErrors([
+                'managerDecisionReasons.' . $absence->request_uuid,
+            ]);
+
+        $absence->refresh();
+
+        $this->assertSame(Absence::STATUS_PENDING, $absence->status);
+        $this->assertNull($absence->decision_reason);
+
+        Livewire::test(VacationPlanner::class)
+            ->set('managerDecisionReasons.' . $absence->request_uuid, 'Project deadline conflicts with this period.')
+            ->call('rejectRequest', $absence->request_uuid)
+            ->assertHasNoErrors();
+
+        $absence->refresh();
+
+        $this->assertSame(Absence::STATUS_REJECTED, $absence->status);
+        $this->assertSame($manager->id, $absence->approved_by);
+        $this->assertSame('Project deadline conflicts with this period.', $absence->decision_reason);
     }
 
     public function test_absence_request_is_auto_approved_when_the_user_has_no_manager(): void
@@ -99,8 +143,15 @@ class ApprovalFlowTest extends TestCase
 
         $requestUuid = Absence::query()->value('request_uuid');
 
-        Livewire::test(VacationPlanner::class)
+        $component = Livewire::test(VacationPlanner::class);
+        $this->assertStringContainsString(
+            sprintf('wire:target="startEditingRequest(&#039;%s&#039;)"', $requestUuid),
+            $component->html()
+        );
+
+        $component
             ->call('startEditingRequest', $requestUuid)
+            ->assertSee('Edit pending request')
             ->set('editingRequestStartDate', '2026-09-03')
             ->set('editingRequestEndDate', '2026-09-05')
             ->set('editingRequestType', 'B')
@@ -135,6 +186,30 @@ class ApprovalFlowTest extends TestCase
 
         Livewire::test(VacationPlanner::class)
             ->call('deletePendingRequest', $requestUuid);
+
+        $this->assertDatabaseCount('absences', 0);
+    }
+
+    public function test_pending_absence_request_can_be_deleted_from_the_edit_modal(): void
+    {
+        AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
+
+        $department = Department::create(['name' => 'Legal']);
+        $manager = $department->users()->create(['name' => 'Maja Manager', 'location' => 'Stockholm']);
+        $employee = $department->users()->create(['name' => 'Dora Employee', 'location' => 'Stockholm', 'manager_id' => $manager->id]);
+
+        session(['current_user_id' => $employee->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('applyAbsence', $employee->id, ['2026-11-03', '2026-11-04'], 'S', 'Edit then delete');
+
+        $requestUuid = Absence::query()->value('request_uuid');
+
+        Livewire::test(VacationPlanner::class)
+            ->call('startEditingRequest', $requestUuid)
+            ->assertSet('editingRequestUuid', $requestUuid)
+            ->call('deleteEditingRequest')
+            ->assertSet('editingRequestUuid', null);
 
         $this->assertDatabaseCount('absences', 0);
     }

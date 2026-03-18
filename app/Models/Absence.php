@@ -15,6 +15,7 @@ class Absence extends Model
         'type',
         'date',
         'reason',
+        'decision_reason',
         'status',
         'request_uuid',
         'approved_by',

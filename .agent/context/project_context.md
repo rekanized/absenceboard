@@ -1,17 +1,45 @@
-# Project Context: Personnel Absence Planner 2026
+# Project Context: LeaveBoard
 
 ## Overview
-The Personnel Absence Planner is a specialized web application designed to track and visualize employee absences (vacations, sick leave, etc.) across various sites and departments. It provides a high-density grid view for planners to manage scheduling efficiently.
+LeaveBoard is an internal leave-planning application for visualising team availability and processing absence requests. The product centers on a multi-month planner, a profile workspace for the active session user, and a lightweight admin page for operational controls.
 
-## Core Goals
-- **Visualization**: Provide a clear, color-coded calendar view of personnel availability.
-- **Efficiency**: Enable quick range-based absence entries through drag-and-drop interactions.
-- **Organization**: Categorize personnel by department and site (location) for better oversight.
-- **Data Accuracy**: Maintain a single source of truth for all employee absences.
+## User-Facing Areas
 
-## Key Features
-- **Interactive Grid**: High-density view of days/weeks/months for all personnel.
-- **Site Filtering**: Real-time filtering by location to narrow down the personnel list.
-- **Holiday Integration**: Automatically highlights public holidays in the planner.
-- **Role-Based Views**: Personnel are grouped by department.
-- **Swedish Data Support**: Seeders generate localized Swedish names and locations.
+### Planner
+- Multi-month timeline covering the selected month and the following two months
+- Drag/range selection for request creation
+- Department grouping with expandable user lists
+- Department, site, and personnel filtering
+- Current-user row spotlight and jump-back behavior
+- Holiday markers driven by the active user's holiday country
+
+### Profile
+- Dedicated `/profile` page for the active session user
+- Holiday-country preference management
+- Light/dark theme preference management
+- Request summaries, request history, and current-month snapshot
+
+### Admin
+- Session-based user impersonation
+- Application name updates through settings
+- Absence-option creation and editing
+- User and manager overview
+- Request log browsing
+
+## Workflow Rules
+- Requests from users with a manager are submitted as pending.
+- Requests from users without a manager are approved immediately.
+- Multi-day requests are grouped by a shared request UUID.
+- Pending requests can be edited or deleted by the request owner before approval.
+- Managers can approve or reject requests from direct reports.
+- Rejections require a manager decision reason.
+
+## Holidays and Preferences
+- Holiday resolution is country-aware.
+- `users.holiday_country` controls planner holidays per user.
+- `holidays.country_code` scopes stored holiday overrides.
+- `users.theme_preference` persists light/dark mode across pages.
+
+## Seeded Environment
+- Seeders provide departments, users, manager assignments, absence options, holidays, and sample absence history.
+- First visit stores the first available user in session as the current active user.

@@ -1,13 +1,5 @@
 <x-layouts.app :layout-current-user="$layoutCurrentUser">
 <div class="page-shell">
-    @php
-        $statusColors = [
-            'pending' => ['bg' => 'rgba(234, 179, 8, 0.14)', 'fg' => '#a16207'],
-            'approved' => ['bg' => 'rgba(34, 197, 94, 0.14)', 'fg' => '#166534'],
-            'rejected' => ['bg' => 'rgba(239, 68, 68, 0.14)', 'fg' => '#b91c1c'],
-        ];
-    @endphp
-
     <section class="profile-card profile-card-featured">
         <div class="profile-card-inner">
             <div>
@@ -17,14 +9,13 @@
 
             <div class="profile-requests">
                 @forelse ($requestHistory as $request)
-                    @php($colors = $statusColors[$request['status']] ?? ['bg' => 'rgba(226, 232, 240, 0.9)', 'fg' => '#334155'])
                     <article class="profile-request">
                         <div class="profile-request-head">
                             <div>
                                 <h3 class="profile-request-title">{{ $request['date_label'] }}</h3>
                                 <div class="profile-request-copy">{{ $request['date_count'] }} day(s) · {{ $request['type'] ?? 'Unknown type' }}</div>
                             </div>
-                            <span class="profile-pill" style="background: {{ $colors['bg'] }}; color: {{ $colors['fg'] }};">
+                            <span class="profile-pill" data-status="{{ $request['status'] }}">
                                 {{ ucfirst($request['status']) }}
                             </span>
                         </div>
@@ -42,6 +33,10 @@
 
                         @if ($request['reason'])
                             <div class="profile-request-copy">{{ $request['reason'] }}</div>
+                        @endif
+
+                        @if ($request['status'] === 'rejected' && $request['decision_reason'])
+                            <div class="profile-request-copy">Manager reason: {{ $request['decision_reason'] }}</div>
                         @endif
                     </article>
                 @empty
@@ -124,7 +119,7 @@
                             Planner holiday markers update from this selection, so public holidays match the country you actually plan against.
                         </div>
 
-                        <button type="submit" class="profile-button">Save holiday country</button>
+                        <x-loading-button type="submit" class="profile-button">Save holiday country</x-loading-button>
                     </form>
 
                     <div class="profile-divider"></div>
@@ -216,8 +211,7 @@
                         <div class="profile-upcoming-item">
                             <div class="profile-request-head">
                                 <strong>{{ $request['date_label'] }}</strong>
-                                @php($colors = $statusColors[$request['status']] ?? ['bg' => 'rgba(226, 232, 240, 0.9)', 'fg' => '#334155'])
-                                <span class="profile-pill" style="background: {{ $colors['bg'] }}; color: {{ $colors['fg'] }};">
+                                <span class="profile-pill" data-status="{{ $request['status'] }}">
                                     {{ ucfirst($request['status']) }}
                                 </span>
                             </div>
@@ -225,6 +219,9 @@
                                 {{ $request['date_count'] }} day(s) · {{ $request['type'] ?? 'Unknown type' }}
                                 @if ($request['reason'])
                                     · {{ $request['reason'] }}
+                                @endif
+                                @if ($request['status'] === 'rejected' && $request['decision_reason'])
+                                    · Manager reason: {{ $request['decision_reason'] }}
                                 @endif
                             </div>
                         </div>

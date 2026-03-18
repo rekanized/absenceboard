@@ -134,6 +134,7 @@ class ProfileController extends Controller
             'request_uuid' => $firstAbsence?->request_uuid,
             'type' => $firstAbsence?->type,
             'reason' => $firstAbsence?->reason,
+            'decision_reason' => $firstAbsence?->decision_reason,
             'status' => $firstAbsence?->status,
             'date_start' => $firstAbsence?->date,
             'date_end' => $lastAbsence?->date,

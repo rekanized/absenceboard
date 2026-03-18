@@ -13,9 +13,12 @@ return new class extends Migration
     {
         Schema::create('holidays', function (Blueprint $table) {
             $table->id();
-            $table->date('date')->unique();
+            $table->string('country_code', 2)->default('SE');
+            $table->date('date');
             $table->string('name');
             $table->timestamps();
+
+            $table->unique(['country_code', 'date']);
         });
     }
 

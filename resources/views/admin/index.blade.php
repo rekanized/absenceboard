@@ -126,7 +126,7 @@
                     <input name="app_name" class="admin-input" maxlength="80" value="{{ old('app_name', $applicationName) }}" placeholder="LeaveBoard">
                 </label>
 
-                <button type="submit" class="admin-button">Save name</button>
+                <x-loading-button type="submit" class="admin-button">Save name</x-loading-button>
             </form>
         </section>
 
@@ -197,7 +197,7 @@
                     </div>
                 </label>
 
-                <button type="submit" class="admin-button">Impersonate</button>
+                <x-loading-button type="submit" class="admin-button">Impersonate</x-loading-button>
             </form>
         </section>
 
@@ -291,22 +291,26 @@
                                 >
                             </label>
 
-                            <label class="admin-label" for="option-color-picker-{{ $option->id }}">
-                                Color
-                                <input
-                                    id="option-color-picker-{{ $option->id }}"
-                                    type="color"
-                                    name="color"
-                                    class="admin-input admin-table-input"
-                                    value="{{ $colorValue }}"
-                                    style="padding: 6px 8px; min-height: 48px;"
-                                >
-                            </label>
-                        </div>
+                            <div class="admin-option-color-group">
+                                <label class="admin-label" for="option-color-picker-{{ $option->id }}">
+                                    Color
+                                    <div class="admin-option-color-control">
+                                        <input
+                                            id="option-color-picker-{{ $option->id }}"
+                                            type="color"
+                                            name="color"
+                                            class="admin-input admin-table-input"
+                                            value="{{ $colorValue }}"
+                                            style="padding: 6px 8px; min-height: 48px;"
+                                        >
 
-                        <div class="admin-color-preview">
-                            <span class="option-dot" style="width: 16px; height: 16px; background: {{ $colorValue }};"></span>
-                            <span style="font-weight: 600; color: var(--text-main);">{{ $colorValue }}</span>
+                                        <div class="admin-color-preview admin-color-preview-inline">
+                                            <span class="option-dot" style="width: 16px; height: 16px; background: {{ $colorValue }};"></span>
+                                            <span class="admin-color-value">{{ $colorValue }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                     </form>
 
@@ -323,7 +327,7 @@
                         </div>
 
                         <div class="admin-inline-actions">
-                            <button type="submit" form="update-option-{{ $option->id }}" class="admin-button">Save</button>
+                            <x-loading-button type="submit" form="update-option-{{ $option->id }}" class="admin-button">Save</x-loading-button>
 
                             <form
                                 method="POST"
@@ -332,7 +336,7 @@
                             >
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="admin-button danger" style="width: 100%;">Delete</button>
+                                <x-loading-button type="submit" class="admin-button danger" style="width: 100%;">Delete</x-loading-button>
                             </form>
                         </div>
 
@@ -373,7 +377,7 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" @click="showAddOptionModal = false">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add option</button>
+                    <x-loading-button type="submit" class="btn btn-primary">Add option</x-loading-button>
                 </div>
             </form>
         </div>
@@ -411,13 +415,13 @@
                                 @csrf
                                 @method('PATCH')
 
-                                <button
+                                <x-loading-button
                                     type="submit"
                                     class="admin-button {{ $user->is_active ? 'secondary' : '' }}"
-                                    @disabled($user->is_active && ! $canDeactivate)
+                                    :disabled="$user->is_active && ! $canDeactivate"
                                 >
                                     {{ $user->is_active ? 'Mark inactive' : 'Reactivate' }}
-                                </button>
+                                </x-loading-button>
 
                                 @if ($user->is_active && ! $canDeactivate)
                                     <p class="admin-helper-text">At least one active user must remain.</p>

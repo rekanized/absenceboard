@@ -28,6 +28,7 @@ class VacationPlanner extends Component
     public ?string $absenceType = null;
 
     public string $reason = '';
+    public array $managerDecisionReasons = [];
     public ?string $editingRequestUuid = null;
     public ?string $editingRequestStartDate = null;
     public ?string $editingRequestEndDate = null;
@@ -300,6 +301,7 @@ class VacationPlanner extends Component
                         'date' => $date,
                         'type' => $type,
                         'reason' => $trimmedReason,
+                        'decision_reason' => null,
                         'status' => $status,
                         'request_uuid' => $requestUuid,
                         'approved_by' => $status === Absence::STATUS_APPROVED ? $this->currentUserId : null,
@@ -309,7 +311,7 @@ class VacationPlanner extends Component
                     ])
                     ->all(),
                 ['user_id', 'date'],
-                ['type', 'reason', 'status', 'request_uuid', 'approved_by', 'approved_at', 'updated_at']
+                ['type', 'reason', 'decision_reason', 'status', 'request_uuid', 'approved_by', 'approved_at', 'updated_at']
             );
 
             $storedAbsences = Absence::query()
@@ -419,6 +421,15 @@ class VacationPlanner extends Component
         $this->editingRequestReason = '';
     }
 
+    public function deleteEditingRequest(): void
+    {
+        if ($this->editingRequestUuid === null) {
+            return;
+        }
+
+        $this->deletePendingRequest($this->editingRequestUuid);
+    }
+
     public function updatePendingRequest(): void
     {
         $this->syncCurrentUser();
@@ -502,6 +513,7 @@ class VacationPlanner extends Component
                     ->update([
                         'type' => $this->editingRequestType,
                         'reason' => $trimmedReason,
+                        'decision_reason' => null,
                         'approved_by' => null,
                         'approved_at' => null,
                     ]);
@@ -517,6 +529,7 @@ class VacationPlanner extends Component
                             'type' => $this->editingRequestType,
                             'date' => $date,
                             'reason' => $trimmedReason,
+                            'decision_reason' => null,
                             'status' => Absence::STATUS_PENDING,
                             'request_uuid' => $this->editingRequestUuid,
                             'approved_by' => null,
@@ -760,6 +773,10 @@ class VacationPlanner extends Component
         }
 
         return Absence::query()
+            ->with([
+                'user:id,manager_id',
+                'user.manager:id,name',
+            ])
             ->where('user_id', $this->currentUserId)
             ->where('status', Absence::STATUS_PENDING)
             ->whereNotNull('request_uuid')
@@ -809,11 +826,17 @@ class VacationPlanner extends Component
         $orderedAbsences = $absences->sortBy('date')->values();
         $firstAbsence = $orderedAbsences->first();
         $lastAbsence = $orderedAbsences->last();
+        $attesterName = null;
+
+        if ($firstAbsence?->relationLoaded('user') && $firstAbsence->user?->relationLoaded('manager')) {
+            $attesterName = $firstAbsence->user?->manager?->name;
+        }
 
         return [
             'request_uuid' => $firstAbsence?->request_uuid,
             'user_id' => $firstAbsence?->user_id,
             'user_name' => $firstAbsence && $firstAbsence->relationLoaded('user') ? $firstAbsence->user?->name : null,
+            'attester_name' => $attesterName,
             'type' => $firstAbsence?->type,
             'reason' => $firstAbsence?->reason,
             'date_start' => $firstAbsence?->date,
@@ -859,13 +882,28 @@ class VacationPlanner extends Component
             return;
         }
 
-        DB::transaction(function () use ($pendingAbsences, $requestUuid, $status) {
+        $decisionReason = null;
+
+        if ($status === Absence::STATUS_REJECTED) {
+            $decisionReason = trim((string) ($this->managerDecisionReasons[$requestUuid] ?? ''));
+
+            if ($decisionReason === '') {
+                $this->addError("managerDecisionReasons.$requestUuid", 'Please provide a reason when rejecting a request.');
+
+                return;
+            }
+        }
+
+        $this->resetValidation("managerDecisionReasons.$requestUuid");
+
+        DB::transaction(function () use ($decisionReason, $pendingAbsences, $requestUuid, $status) {
             Absence::query()
                 ->where('request_uuid', $requestUuid)
                 ->where('status', Absence::STATUS_PENDING)
                 ->whereHas('user', fn ($query) => $query->active()->where('manager_id', $this->currentUserId))
                 ->update([
                     'status' => $status,
+                    'decision_reason' => $status === Absence::STATUS_REJECTED ? $decisionReason : null,
                     'approved_by' => $this->currentUserId,
                     'approved_at' => now(),
                 ]);
@@ -883,10 +921,13 @@ class VacationPlanner extends Component
                 [
                     'before' => $this->snapshotRequest($pendingAbsences),
                     'after' => $this->snapshotRequest($updatedAbsences),
+                    'decision_reason' => $decisionReason,
                 ],
                 $status,
             );
         });
+
+        unset($this->managerDecisionReasons[$requestUuid]);
     }
 
     private function recordRequestLog(string $action, Collection $absences, ?int $actorId = null, array $metadata = [], ?string $status = null): void
@@ -931,6 +972,7 @@ class VacationPlanner extends Component
             'user_id' => $firstAbsence?->user_id,
             'type' => $firstAbsence?->type,
             'reason' => $firstAbsence?->reason,
+            'decision_reason' => $firstAbsence?->decision_reason,
             'status' => $firstAbsence?->status,
             'date_start' => $firstAbsence?->date,
             'date_end' => $lastAbsence?->date,

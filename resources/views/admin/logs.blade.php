@@ -1,17 +1,5 @@
 <x-layouts.app :layout-current-user="$layoutCurrentUser ?? null">
 <div class="page-shell page-shell-wide">
-    @php
-        $actionColors = [
-            'submitted' => ['bg' => '#dbeafe', 'fg' => '#1d4ed8'],
-            'updated' => ['bg' => '#ede9fe', 'fg' => '#6d28d9'],
-            'deleted' => ['bg' => '#fee2e2', 'fg' => '#b91c1c'],
-            'approved' => ['bg' => '#dcfce7', 'fg' => '#166534'],
-            'rejected' => ['bg' => '#fef3c7', 'fg' => '#92400e'],
-            'user_inactivated' => ['bg' => '#fee2e2', 'fg' => '#991b1b'],
-            'user_reactivated' => ['bg' => '#dcfce7', 'fg' => '#166534'],
-        ];
-    @endphp
-
     <section class="admin-card admin-stack">
         <div class="admin-toolbar">
             <div>
@@ -47,7 +35,7 @@
             </label>
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="submit" class="admin-button">Apply filters</button>
+                <x-loading-button type="submit" class="admin-button">Apply filters</x-loading-button>
                 <a href="{{ route('admin.logs') }}" class="admin-button ghost">Reset</a>
             </div>
         </form>
@@ -74,7 +62,6 @@
                     <tbody>
                         @foreach ($logs as $log)
                             @php
-                                $colors = $actionColors[$log->action] ?? ['bg' => '#e2e8f0', 'fg' => '#334155'];
                                 $metadata = $log->metadata ?? [];
                             @endphp
                             <tr>
@@ -87,7 +74,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="log-chip" style="background: {{ $colors['bg'] }}; color: {{ $colors['fg'] }};">
+                                    <span class="log-chip" data-action="{{ $log->action }}">
                                         {{ $actionOptions[$log->action] ?? ucfirst($log->action) }}
                                     </span>
                                 </td>
@@ -136,6 +123,10 @@
 
                                         @if ($log->reason)
                                             <span class="log-muted">Reason: {{ $log->reason }}</span>
+                                        @endif
+
+                                        @if ($metadata['decision_reason'] ?? null)
+                                            <span class="log-muted">Manager reason: {{ $metadata['decision_reason'] }}</span>
                                         @endif
 
                                         @if (($metadata['before']['date_start'] ?? null) && ($metadata['after']['date_start'] ?? null))

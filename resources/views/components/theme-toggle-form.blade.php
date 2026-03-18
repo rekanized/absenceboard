@@ -21,7 +21,7 @@
         <span class="theme-toggle-copy">{{ $copy }}</span>
     </div>
 
-    <button
+    <x-loading-button
         type="submit"
         class="theme-toggle-button {{ $buttonClass }} {{ $isDarkTheme ? 'is-active' : '' }}"
         aria-label="Toggle dark mode"
@@ -35,5 +35,5 @@
             <span class="theme-toggle-button-title">{{ $isDarkTheme ? 'Dark mode on' : 'Light mode on' }}</span>
             <span class="theme-toggle-button-meta">Switch to {{ $isDarkTheme ? 'light' : 'dark' }} mode</span>
         </span>
-    </button>
+    </x-loading-button>
 </form>
