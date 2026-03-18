@@ -17,6 +17,7 @@ LeaveBoard is an internal leave-planning application built with Laravel and Live
 ### Profile
 * `/profile` shows the current active user's profile workspace.
 * Users can update `users.holiday_country` from the profile page.
+* Users can switch their saved light or dark theme from the sidebar navigation and from the profile page.
 * The profile page shows department, site, manager, request summaries, recent request outcomes, and a current-month planner snapshot.
 
 ### Approval flow
@@ -34,6 +35,7 @@ LeaveBoard is an internal leave-planning application built with Laravel and Live
 * Supports changing the application name via the `settings` table.
 * Supports creating configurable absence options with code, label, color, and sort order.
 * Shows current users, managers, and configured absence options.
+* Uses the same persisted current-user theme and shared sidebar toggle as the planner and profile pages.
 
 ### Holidays and seed data
 * Country-aware holidays are resolved through `App\Support\HolidayCalendar`.
@@ -52,6 +54,7 @@ LeaveBoard is an internal leave-planning application built with Laravel and Live
 * **Icons:** Material Symbols icons via the `.icon` class.
 * **Assets:** Vite is present; npm is used for frontend build/dev commands.
 * **Testing:** PHPUnit 12.
+* **Shared stylesheet:** `public/app.css` is the primary handcrafted stylesheet and is organized by shell, profile, admin, and planner sections.
 
 ## Development guidance
 * **PHP dependencies:** Use Composer.
@@ -76,6 +79,7 @@ LeaveBoard is an internal leave-planning application built with Laravel and Live
 * `resources/views/admin/index.blade.php` — admin workspace.
 * `resources/views/profile/show.blade.php` — current-user profile workspace.
 * `resources/views/components/layouts/app.blade.php` — branded shell layout.
+* `public/app.css` — shared application stylesheet with theme tokens and page-level sections.
 
 ## Livewire components
 * **Creation:** Prefer `php artisan make:livewire` for new components.

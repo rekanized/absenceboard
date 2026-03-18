@@ -7,11 +7,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class User extends Model
 {
-    protected $fillable = ['department_id', 'manager_id', 'name', 'location', 'holiday_country', 'is_active'];
+    public const THEME_LIGHT = 'light';
+    public const THEME_DARK = 'dark';
+
+    protected $fillable = ['department_id', 'manager_id', 'name', 'location', 'holiday_country', 'theme_preference', 'is_active'];
 
     protected $casts = [
         'is_active' => 'bool',
     ];
+
+    public static function supportedThemePreferences(): array
+    {
+        return [
+            self::THEME_LIGHT,
+            self::THEME_DARK,
+        ];
+    }
+
+    public function prefersDarkTheme(): bool
+    {
+        return $this->theme_preference === self::THEME_DARK;
+    }
 
     public function scopeActive(Builder $query): Builder
     {

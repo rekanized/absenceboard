@@ -57,6 +57,31 @@ class ProfileController extends Controller
             ->with('status', 'Holiday country updated.');
     }
 
+    public function updateTheme(Request $request): RedirectResponse
+    {
+        $currentUser = $this->currentUserFromSession($request);
+
+        abort_if($currentUser === null, 404);
+
+        $validated = $request->validate([
+            'theme_preference' => [
+                'required',
+                'string',
+                Rule::in(User::supportedThemePreferences()),
+            ],
+        ]);
+
+        $themePreference = (string) $validated['theme_preference'];
+
+        $currentUser->update([
+            'theme_preference' => $themePreference,
+        ]);
+
+        return redirect()
+            ->back()
+            ->with('status', sprintf('Appearance updated to %s mode.', $themePreference));
+    }
+
     private function currentUserFromSession(Request $request): ?User
     {
         $currentUserId = $request->session()->get('current_user_id');
@@ -67,7 +92,7 @@ class ProfileController extends Controller
 
         return User::query()
             ->active()
-            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country', 'is_active'])
+            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country', 'theme_preference', 'is_active'])
             ->with([
                 'department:id,name',
                 'manager:id,department_id,name,location',

@@ -71,6 +71,7 @@ class ProfilePageTest extends TestCase
             ->assertSeeText('Copenhagen')
             ->assertSeeText('Maja Manager')
             ->assertSeeText('United States')
+            ->assertSeeText('Appearance')
             ->assertSeeText('Approved requests')
             ->assertSeeText('Rejected requests')
             ->assertSeeText('Pending requests')
@@ -119,5 +120,42 @@ class ProfilePageTest extends TestCase
         $this->assertNotNull($holiday);
         $this->assertSame('Independence Day', $holiday['holiday_name']);
         $this->assertTrue($holiday['is_holiday']);
+    }
+
+    public function test_user_can_update_theme_preference_from_profile(): void
+    {
+        $department = Department::create(['name' => 'Design']);
+        $user = $department->users()->create([
+            'name' => 'Noah Nightshift',
+            'location' => 'Gothenburg',
+            'holiday_country' => 'SE',
+            'theme_preference' => 'light',
+        ]);
+
+        $this
+            ->withSession(['current_user_id' => $user->id])
+            ->from(route('profile.show'))
+            ->patch(route('profile.theme.update'), ['theme_preference' => 'dark'])
+            ->assertRedirect(route('profile.show'))
+            ->assertSessionHas('status', 'Appearance updated to dark mode.');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'theme_preference' => 'dark',
+        ]);
+
+        $this
+            ->withSession(['current_user_id' => $user->id])
+            ->get(route('profile.show'))
+            ->assertOk()
+            ->assertSee('data-theme="dark"', false)
+            ->assertSeeText('Dark mode on');
+
+        $this
+            ->withSession(['current_user_id' => $user->id])
+            ->get(route('planner'))
+            ->assertOk()
+            ->assertSee('data-theme="dark"', false)
+            ->assertSeeText('Dark mode on');
     }
 }

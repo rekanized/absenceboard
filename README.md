@@ -25,7 +25,8 @@ The application combines a timeline-style planner with a small admin workspace f
 - maintaining absence types,
 - updating the application name,
 - supporting manager-based approval workflows,
-- letting each user manage their own holiday-country profile.
+- letting each user manage their own holiday-country profile,
+- persisting a personal light or dark workspace theme.
 
 ## Core functionality
 
@@ -75,6 +76,7 @@ The application combines a timeline-style planner with a small admin workspace f
 
 - Each active session user has a dedicated `/profile` page.
 - Users can configure which country's public holidays should be used in the planner.
+- Users can switch their workspace between light and dark mode from both the sidebar navigation and the profile page.
 - The profile page shows:
   - the user's department,
   - the user's site,
@@ -110,6 +112,7 @@ Recent updates introduced a more complete leave workflow model:
 
 - `users.manager_id` links users to a manager.
 - `users.holiday_country` stores the selected public-holiday calendar for each user.
+- `users.theme_preference` stores the current user's saved light or dark workspace theme.
 - `absences.status` stores `pending`, `approved`, or `rejected`.
 - `absences.request_uuid` groups multiple dates into one request.
 - `absences.approved_by` and `absences.approved_at` track approvals.
@@ -203,6 +206,7 @@ On first visit, the application automatically stores the first available user in
 - `resources/views/admin/index.blade.php` — admin workspace.
 - `resources/views/profile/show.blade.php` — profile workspace.
 - `resources/views/components/layouts/app.blade.php` — branded shared layout.
+- `public/app.css` — shared handcrafted stylesheet, organized into shell, profile, admin, and planner sections.
 
 ## Test coverage
 

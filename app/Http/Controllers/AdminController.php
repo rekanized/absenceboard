@@ -26,7 +26,7 @@ class AdminController extends Controller
             'currentUser' => $currentUser,
             'layoutCurrentUser' => $currentUser,
             'users' => User::query()
-                ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'is_active'])
+                ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'theme_preference', 'is_active'])
                 ->with(['department:id,name', 'manager:id,name'])
                 ->orderBy('name')
                 ->get(),
@@ -290,7 +290,7 @@ class AdminController extends Controller
 
         return User::query()
             ->active()
-            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country'])
+            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country', 'theme_preference'])
             ->with(['department:id,name', 'manager:id,name'])
             ->find($currentUserId);
     }

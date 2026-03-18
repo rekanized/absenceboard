@@ -1,5 +1,5 @@
 <x-layouts.app :layout-current-user="$layoutCurrentUser">
-<div style="max-width: 1240px; margin: 0 auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px;">
+<div class="page-shell">
     @php
         $statusColors = [
             'pending' => ['bg' => 'rgba(234, 179, 8, 0.14)', 'fg' => '#a16207'],
@@ -7,216 +7,6 @@
             'rejected' => ['bg' => 'rgba(239, 68, 68, 0.14)', 'fg' => '#b91c1c'],
         ];
     @endphp
-
-    <style>
-        .profile-hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
-            gap: 24px;
-        }
-
-        .profile-card {
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            border-radius: 24px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-        }
-
-        .profile-card-inner {
-            padding: 28px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .profile-kicker {
-            margin: 0;
-            color: #2563eb;
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-        }
-
-        .profile-title {
-            margin: 0;
-            font-size: 32px;
-            line-height: 1.05;
-            letter-spacing: -0.04em;
-            color: #0f172a;
-        }
-
-        .profile-subtitle {
-            margin: 0;
-            color: #475569;
-            font-size: 14px;
-            line-height: 1.6;
-            max-width: 60ch;
-        }
-
-        .profile-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-        }
-
-        .profile-stat,
-        .profile-detail,
-        .profile-request,
-        .profile-upcoming-item {
-            border-radius: 18px;
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            background: rgba(248, 250, 252, 0.9);
-        }
-
-        .profile-stat,
-        .profile-detail,
-        .profile-upcoming-item {
-            padding: 18px;
-        }
-
-        .profile-stat-label,
-        .profile-detail-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-
-        .profile-stat-value {
-            display: block;
-            color: #0f172a;
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-        }
-
-        .profile-stat-copy,
-        .profile-detail-value,
-        .profile-helper {
-            color: #475569;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .profile-section-title {
-            margin: 0;
-            font-size: 20px;
-            color: #0f172a;
-            letter-spacing: -0.03em;
-        }
-
-        .profile-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .profile-field {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .profile-field label {
-            color: #334155;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .profile-select {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            background: white;
-            color: #0f172a;
-            font: inherit;
-        }
-
-        .profile-button {
-            align-self: flex-start;
-            padding: 12px 18px;
-            border: 0;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
-            color: white;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 18px 34px rgba(37, 99, 235, 0.24);
-        }
-
-        .profile-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .profile-requests {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .profile-request {
-            padding: 18px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .profile-request-head,
-        .profile-request-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .profile-request-title {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .profile-request-copy,
-        .profile-request-meta {
-            color: #475569;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .profile-empty {
-            padding: 18px;
-            border-radius: 18px;
-            border: 1px dashed rgba(148, 163, 184, 0.28);
-            background: rgba(248, 250, 252, 0.9);
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .profile-link {
-            color: #2563eb;
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        @media (max-width: 960px) {
-            .profile-hero {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
 
     <section class="profile-hero">
         <article class="profile-card">
@@ -263,35 +53,45 @@
 
         <aside class="profile-card">
             <div class="profile-card-inner">
-                <div>
-                    <p class="profile-kicker">Holiday country</p>
-                    <h2 class="profile-section-title">Configure your calendar</h2>
+                <div class="profile-stack">
+                    <div>
+                        <p class="profile-kicker">Preferences</p>
+                        <h2 class="profile-section-title">Configure your workspace</h2>
+                    </div>
+
+                    <form method="POST" action="{{ route('profile.update') }}" class="profile-form">
+                        @csrf
+                        @method('PATCH')
+
+                        <div class="profile-field">
+                            <label for="holiday_country">Holiday country</label>
+                            <select id="holiday_country" name="holiday_country" class="profile-select">
+                                @foreach ($countries as $countryCode => $countryName)
+                                    <option value="{{ $countryCode }}" @selected(old('holiday_country', $currentUser->holiday_country) === $countryCode)>
+                                        {{ $countryName }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('holiday_country')
+                                <div class="profile-helper" style="color: #b91c1c;">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="profile-helper">
+                            Planner holiday markers update from this selection, so public holidays match the country you actually plan against.
+                        </div>
+
+                        <button type="submit" class="profile-button">Save holiday country</button>
+                    </form>
+
+                    <div class="profile-divider"></div>
+
+                    <x-theme-toggle-form
+                        :theme="$currentUser->theme_preference ?? \App\Models\User::THEME_LIGHT"
+                        heading="Appearance"
+                        copy="Switch the workspace between light and dark mode."
+                    />
                 </div>
-
-                <form method="POST" action="{{ route('profile.update') }}" class="profile-form">
-                    @csrf
-                    @method('PATCH')
-
-                    <div class="profile-field">
-                        <label for="holiday_country">Country</label>
-                        <select id="holiday_country" name="holiday_country" class="profile-select">
-                            @foreach ($countries as $countryCode => $countryName)
-                                <option value="{{ $countryCode }}" @selected(old('holiday_country', $currentUser->holiday_country) === $countryCode)>
-                                    {{ $countryName }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('holiday_country')
-                            <div class="profile-helper" style="color: #b91c1c;">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="profile-helper">
-                        Planner holiday markers update from this selection, so public holidays match the country you actually plan against.
-                    </div>
-
-                    <button type="submit" class="profile-button">Save holiday country</button>
-                </form>
             </div>
         </aside>
     </section>

@@ -685,7 +685,7 @@ class VacationPlanner extends Component
     {
         return User::query()
             ->active()
-            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country'])
+            ->select(['id', 'department_id', 'manager_id', 'name', 'location', 'holiday_country', 'theme_preference'])
             ->with([
                 'manager:id,name',
                 'department:id,name',

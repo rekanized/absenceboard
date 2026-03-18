@@ -11,6 +11,7 @@ Route::middleware(EnsureCurrentUser::class)->group(function () {
 	Route::get('/', VacationPlanner::class)->name('planner');
 	Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 	Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+	Route::patch('/profile/theme', [ProfileController::class, 'updateTheme'])->name('profile.theme.update');
 
 	Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
 	Route::get('/admin/logs', [AdminController::class, 'logs'])->name('admin.logs');

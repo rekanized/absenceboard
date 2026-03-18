@@ -14,13 +14,19 @@ class RouteBehaviorTest extends TestCase
     public function test_admin_index_route_is_accessible_for_the_current_session_user(): void
     {
         $department = Department::create(['name' => 'Engineering']);
-        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm']);
+        $admin = $department->users()->create([
+            'name' => 'Asta Admin',
+            'location' => 'Stockholm',
+            'theme_preference' => 'dark',
+        ]);
 
         $this
             ->withSession(['current_user_id' => $admin->id])
             ->get(route('admin.index'))
             ->assertOk()
-            ->assertSeeText('Asta Admin');
+            ->assertSeeText('Asta Admin')
+            ->assertSee('data-theme="dark"', false)
+            ->assertSeeText('Dark mode on');
     }
 
     public function test_admin_logs_route_displays_matching_request_logs(): void
