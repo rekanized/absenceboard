@@ -32,6 +32,6 @@ RUN chmod +x docker/entrypoint.sh \
 
 EXPOSE 9000
 
-ENTRYPOINT ["/app/docker/entrypoint.sh"]
+ENTRYPOINT ["sh", "/app/docker/entrypoint.sh"]
 
 CMD ["php-fpm"]
