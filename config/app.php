@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'AbsenseBoard'),
+    'name' => env('APP_NAME', 'AbsenceBoard'),
 
     /*
     |--------------------------------------------------------------------------

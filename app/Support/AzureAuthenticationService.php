@@ -224,7 +224,7 @@ class AzureAuthenticationService
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
                 'grant_type' => 'authorization_code',
-                'code' => 'leaveboard-verification-probe',
+                'code' => 'absenceboard-verification-probe',
                 'redirect_uri' => route('auth.azure.callback'),
             ]);
 

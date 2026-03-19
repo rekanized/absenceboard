@@ -1,10 +1,10 @@
-# LeaveBoard AI Agent Guide
+# AbsenceBoard AI Agent Guide
 
 ## Start Here
 Use this file as the short entry point for repository context. Detailed project context lives in `.agent/context/` and `GEMINI.md`.
 
 ## Product Snapshot
-LeaveBoard is a Laravel 13 and Livewire 4 leave-planning application with:
+AbsenceBoard is a Laravel 13 and Livewire 4 leave-planning application with:
 - a multi-month planner,
 - drag and date-based absence entry,
 - manager-based approval flow,

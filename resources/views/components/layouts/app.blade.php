@@ -4,9 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <title>{{ $title ?? (config('app.name', 'LeaveBoard') . ' · Planner') }}</title>
+        <title>{{ $title ?? (config('app.name', 'AbsenceBoard') . ' · Planner') }}</title>
 
-        <link rel="icon" type="image/svg+xml" href="{{ asset('brand/leaveboard-mark.svg') }}">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('brand/absenceboard-mark.svg') }}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
         @livewireStyles
     </head>
     @php
-        $applicationName = config('app.name', 'LeaveBoard');
+        $applicationName = config('app.name', 'AbsenceBoard');
         $layoutCurrentUser = $layoutCurrentUser ?? $currentUser ?? null;
         $impersonatorUserId = session('impersonator_user_id');
         $impersonatorUser = is_numeric($impersonatorUserId)
@@ -49,7 +49,7 @@
         <div class="app-shell">
             <aside class="app-sidebar">
                 <a href="{{ route('planner') }}" class="app-brand">
-                    <img src="{{ asset('brand/leaveboard-mark.svg') }}" alt="{{ $applicationName }} logo">
+                    <img src="{{ asset('brand/absenceboard-mark.svg') }}" alt="{{ $applicationName }} logo">
                     <span class="app-brand-copy">
                         <span class="app-brand-kicker">Workspace</span>
                         <span class="app-brand-name">{{ $applicationName }}</span>

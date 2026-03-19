@@ -50,7 +50,7 @@
                 @csrf
                 <label class="admin-label">
                     App name
-                    <input name="app_name" class="admin-input" maxlength="80" value="{{ old('app_name', $applicationName) }}" placeholder="LeaveBoard">
+                    <input name="app_name" class="admin-input" maxlength="80" value="{{ old('app_name', $applicationName) }}" placeholder="AbsenceBoard">
                 </label>
 
                 <button type="submit" class="admin-button">Save name</button>

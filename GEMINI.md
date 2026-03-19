@@ -1,7 +1,7 @@
-# LeaveBoard Agent Context
+# AbsenceBoard Agent Context
 
 ## Product Summary
-LeaveBoard is an internal leave-planning application built with Laravel and Livewire. It combines a multi-month absence planner, a current-user profile workspace, and a lightweight admin area for absence-option and application settings management.
+AbsenceBoard is an internal leave-planning application built with Laravel and Livewire. It combines a multi-month absence planner, a current-user profile workspace, and a lightweight admin area for absence-option and application settings management.
 
 ## Current Scope
 - Planner page with department grouping, filters, drag/range selection, Add by date entry, and holiday markers

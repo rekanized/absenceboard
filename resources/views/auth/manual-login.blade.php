@@ -4,8 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>{{ config('app.name', 'LeaveBoard') }}</title>
-        <link rel="icon" type="image/svg+xml" href="{{ asset('brand/leaveboard-mark.svg') }}">
+        <title>{{ config('app.name', 'AbsenceBoard') }}</title>
+        <link rel="icon" type="image/svg+xml" href="{{ asset('brand/absenceboard-mark.svg') }}">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
         <main class="guest-shell guest-shell-landing">
             <section class="guest-card guest-card-hero guest-card-landing guest-card-manual-login">
                 <div class="guest-brand">
-                    <img src="{{ asset('brand/leaveboard-mark.svg') }}" alt="{{ config('app.name', 'LeaveBoard') }} logo">
+                    <img src="{{ asset('brand/absenceboard-mark.svg') }}" alt="{{ config('app.name', 'AbsenceBoard') }} logo">
                     <div>
                         <h1 class="guest-title">Manual sign-in</h1>
                     </div>

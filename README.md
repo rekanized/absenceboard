@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/brand/leaveboard-mark.svg" alt="LeaveBoard logo" width="88" height="88">
+  <img src="public/brand/absenceboard-mark.svg" alt="AbsenceBoard logo" width="88" height="88">
 </p>
 
-<h1 align="center">LeaveBoard</h1>
+<h1 align="center">AbsenceBoard</h1>
 
 <p align="center">
   A Laravel-based leave planning app for visualising team availability, submitting absence requests,
@@ -16,7 +16,7 @@ https://buymeacoffee.com/rekanized
 
 ## What It Does
 
-LeaveBoard gives teams a shared planning surface for time off and availability.
+AbsenceBoard gives teams a shared planning surface for time off and availability.
 
 - Visual multi-month planner for team absences
 - Configurable absence options with labels, codes, and colors
@@ -51,7 +51,7 @@ LeaveBoard gives teams a shared planning surface for time off and availability.
 
 ## Quick Start
 
-LeaveBoard does not use Node.js, npm, Vite, Tailwind, or Bootstrap. Local setup is PHP-, Composer-, and vanilla-CSS-only.
+AbsenceBoard does not use Node.js, npm, Vite, Tailwind, or Bootstrap. Local setup is PHP-, Composer-, and vanilla-CSS-only.
 
 ### Requirements
 
@@ -82,7 +82,7 @@ Then open `http://127.0.0.1:8000`.
 
 ## Authentication
 
-LeaveBoard supports two startup paths for authentication.
+AbsenceBoard supports two startup paths for authentication.
 
 Users arrive on a landing page at `/` with direct entry points for:
 
@@ -96,7 +96,7 @@ This is the preferred production-style setup.
 
 1. Start the application and open the first-run setup page.
 2. Enter the Azure Tenant ID, Client ID, and Client Secret from your Azure App Registration.
-3. Save the configuration so LeaveBoard can verify the Microsoft OpenID endpoints.
+3. Save the configuration so AbsenceBoard can verify the Microsoft OpenID endpoints.
 4. Return to the landing page and sign in with Microsoft.
 5. The first successful sign-in becomes the first admin user.
 
@@ -226,7 +226,7 @@ The default seeders provide absence options and holiday data only. After seeding
 
 ## Project Notes
 
-- The default product name is LeaveBoard and can be changed from the Application settings admin page.
+- The default product name is AbsenceBoard and can be changed from the Application settings admin page.
 - The admin workspace is intentionally simple but now split into focused subpages to keep authentication, user management, and settings separate.
 - AI-agent-specific project context lives in `GEMINI.md`, `AGENTS.md`, and `.agent/context/`.
 

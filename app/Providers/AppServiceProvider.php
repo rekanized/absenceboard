@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::preventLazyLoading(! $this->app->isProduction());
 
-        $applicationName = Setting::valueFor('app_name');
+        $applicationName = $this->normalizeApplicationName(Setting::valueFor('app_name', config('app.name')));
         $applicationTimezone = Setting::valueFor('app_timezone');
 
         if ($applicationName !== null && $applicationName !== '') {
@@ -35,5 +35,14 @@ class AppServiceProvider extends ServiceProvider
             Config::set('app.timezone', $applicationTimezone);
             date_default_timezone_set($applicationTimezone);
         }
+    }
+
+    private function normalizeApplicationName(?string $applicationName): ?string
+    {
+        if ($applicationName === 'AbsenseBoard') {
+            return 'AbsenceBoard';
+        }
+
+        return $applicationName;
     }
 }

@@ -1,7 +1,7 @@
-# Project Context: LeaveBoard
+# Project Context: AbsenceBoard
 
 ## Overview
-LeaveBoard is an internal leave-planning application for visualising team availability and processing absence requests. The product centers on a multi-month planner, a landing/authentication entry flow, a profile workspace for the active session user, and a split admin workspace for operational controls.
+AbsenceBoard is an internal leave-planning application for visualising team availability and processing absence requests. The product centers on a multi-month planner, a landing/authentication entry flow, a profile workspace for the active session user, and a split admin workspace for operational controls.
 
 ## User-Facing Areas
 
