@@ -260,6 +260,41 @@ class AuthenticationSetupTest extends TestCase
         ]);
     }
 
+    public function test_manual_user_modal_validation_error_is_only_rendered_inside_the_modal(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $admin = $department->users()->create([
+            'name' => 'Asta Admin',
+            'email' => 'asta@example.test',
+            'password' => 'very-secure-password',
+            'location' => 'Stockholm',
+            'is_admin' => true,
+        ]);
+
+        $response = $this
+            ->from(route('admin.users'))
+            ->withSession(['current_user_id' => $admin->id])
+            ->followingRedirects()
+            ->post(route('admin.manual-users.store'), [
+                '_manual_user_form' => '1',
+                'first_name' => 'Nils',
+                'last_name' => 'Newman',
+                'email' => 'nils@example.test',
+                'password' => 'shortpass',
+                'password_confirmation' => 'shortpass',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertSee('isManualUserModalOpen: true', false)
+            ->assertSeeText('The password field must be at least 12 characters.');
+
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), 'The password field must be at least 12 characters.')
+        );
+    }
+
     public function test_admin_can_update_azure_profile_field_mapping(): void
     {
         Http::fake([

@@ -13,6 +13,8 @@ class AbsenceRequestLog extends Model
     public const ACTION_REJECTED = 'rejected';
     public const ACTION_USER_INACTIVATED = 'user_inactivated';
     public const ACTION_USER_REACTIVATED = 'user_reactivated';
+    public const ACTION_IMPERSONATION_STARTED = 'impersonation_started';
+    public const ACTION_IMPERSONATION_ENDED = 'impersonation_ended';
 
     protected $fillable = [
         'request_uuid',
@@ -47,6 +49,8 @@ class AbsenceRequestLog extends Model
             self::ACTION_REJECTED => 'Rejected',
             self::ACTION_USER_INACTIVATED => 'User Inactivated',
             self::ACTION_USER_REACTIVATED => 'User Reactivated',
+            self::ACTION_IMPERSONATION_STARTED => 'Impersonation Started',
+            self::ACTION_IMPERSONATION_ENDED => 'Impersonation Ended',
         ];
     }
 

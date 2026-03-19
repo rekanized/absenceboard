@@ -18,7 +18,7 @@ class HomeController extends Controller
             return redirect()->route('planner');
         }
 
-        $request->session()->forget('current_user_id');
+        $request->session()->forget(['current_user_id', 'impersonator_user_id']);
 
         if (User::query()->count() === 0) {
             return redirect()->route('setup.show');

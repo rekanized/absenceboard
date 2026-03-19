@@ -34,4 +34,28 @@ class AdminApplicationNameTest extends TestCase
             ->assertOk()
             ->assertSee('Vacation Hub');
     }
+
+    public function test_admin_can_update_the_application_timezone(): void
+    {
+        $department = Department::create(['name' => 'Engineering']);
+        $user = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+
+        $response = $this
+            ->withSession(['current_user_id' => $user->id])
+            ->post(route('admin.application-timezone.update'), [
+                'app_timezone' => 'Europe/Stockholm',
+            ]);
+
+        $response
+            ->assertRedirect(route('admin.settings'))
+            ->assertSessionHas('status', 'Application timezone updated.');
+
+        $this->assertSame('Europe/Stockholm', Setting::valueFor('app_timezone'));
+
+        $this
+            ->withSession(['current_user_id' => $user->id])
+            ->get(route('admin.settings'))
+            ->assertOk()
+            ->assertSee('Europe/Stockholm');
+    }
 }

@@ -4,10 +4,13 @@
     wire:key="planner-{{ md5($viewDate . '|' . json_encode($selectedDepartments) . '|' . json_encode($selectedSites) . '|' . json_encode($selectedManagers) . '|' . $search . '|' . ($currentUser?->id ?? 'guest')) }}"
     x-data="planner({
         initialViewDate: @js($viewDate),
+        applicationTimezone: @js(config('app.timezone')),
         initialDepartments: @js($departments->pluck('name')->values()),
         availableDepartments: @js($allDepartments->values()),
         availableSites: @js($sites->values()),
         availableManagers: @js($managers->values()),
+        currentUserAbsenceLookup: @js($currentUserAbsenceLookup),
+        currentUserHasManager: @js((bool) $currentUser?->manager_id),
         editableUserId: @js($currentUser?->id),
         initialAbsenceType: @js($absenceType),
         editingRequestUuid: @entangle('editingRequestUuid').live,
@@ -20,6 +23,10 @@
     @visibilitychange.document="handleVisibilityChange()"
 >
     <div class="planner-wrapper">
+        <div class="planner-status-wrap" x-show="plannerNotice" x-cloak>
+            <div class="planner-status" :class="plannerNoticeTone" x-text="plannerNotice"></div>
+        </div>
+
         <header class="planner-header">
             <div class="planner-header-main">
                 <div class="planner-intro">
@@ -139,8 +146,16 @@
 
         <div class="planner-secondary-bar">
             <div class="planner-toolbar-summary">
-                <div class="planner-help">
-                    Drag across days to select range
+                <div class="planner-help-actions">
+                    <div class="planner-help">
+                        Drag across days to select range
+                    </div>
+
+                    @if ($currentUser)
+                        <button type="button" class="btn btn-secondary planner-quick-add-trigger" @click="openQuickAddModal()">
+                            Add by date
+                        </button>
+                    @endif
                 </div>
 
                 <div class="planner-legend" aria-label="Absence colors">
@@ -221,7 +236,7 @@
 
                             <label class="request-field request-field-full">
                                 <span>Absence type</span>
-                                <select class="request-input" x-model="mobileAbsenceType">
+                                <select class="request-input" x-model="mobileAbsenceType" @change="syncAbsenceTypes(mobileAbsenceType)">
                                     @foreach($absenceOptions as $absenceOption)
                                         <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
                                     @endforeach
@@ -241,9 +256,22 @@
                             </div>
                         </div>
 
+                        <div class="selection-summary selection-summary-warning" x-show="mobileOverlapDates.length > 0">
+                            <div class="selection-summary-header">
+                                <span class="selection-summary-title">Overwrite warning</span>
+                                <span x-text="`${mobileOverlapDates.length} day(s)`"></span>
+                            </div>
+
+                            <p class="selection-summary-copy">
+                                Applying this absence will replace the existing absence already set on these days.
+                            </p>
+
+                            <p class="selection-summary-copy" x-text="mobileOverlapLabelsText"></p>
+                        </div>
+
                         <div class="request-actions">
                             <button type="button" class="btn btn-secondary" @click="resetMobileQuickAdd()">Cancel</button>
-                            <x-loading-button type="button" loading-target="applyAbsenceSpan" class="btn btn-primary" x-bind:disabled="!mobileQuickAddReady" @click="submitMobileQuickAdd()">Apply absence</x-loading-button>
+                            <button type="button" class="btn btn-primary" :disabled="!mobileQuickAddReady" @click="submitMobileQuickAdd()">Apply absence</button>
                         </div>
                     </div>
                 </section>
@@ -361,9 +389,10 @@
                     @endforeach
 
                     @foreach($dates as $index => $date)
-                        <div class="cell header-cell date-header date-header-data 
-                             {{ $date['is_weekend'] ? 'weekend' : '' }} 
-                             {{ $date['is_holiday'] ? 'holiday' : '' }}" 
+                            <div class="cell header-cell date-header date-header-data 
+                                {{ $date['is_weekend'] ? 'weekend' : '' }} 
+                                {{ $date['is_holiday'] ? 'holiday' : '' }}
+                                {{ $date['date'] === date('Y-m-d') ? 'today' : '' }}" 
                              data-date="{{ $date['date'] }}"
                                 data-month-label="{{ \Carbon\Carbon::parse($date['date'])->translatedFormat('F Y') }}"
                              @if($date['date'] === date('Y-m-d')) id="today" @endif
@@ -481,85 +510,113 @@
         </div>
     </div>
 
-    <!-- Selection Modal -->
-    <div class="modal-overlay" x-show="isModalOpen" x-cloak x-transition x-on:keydown.escape.window="closeModal()">
-        <div class="modal-content" :class="{ 'request-edit-modal': isEditModalOpen }" @click.away="closeModal()" @click.stop>
-            <template x-if="isEditModalOpen">
-                <div class="modal-stack">
-                    <div class="request-edit-modal-head">
-                        <div>
-                            <h2 class="modal-title">Edit pending request</h2>
-                            <p class="request-helper request-edit-modal-copy">Adjust the date range, absence type, or reason before your manager reviews this request.</p>
-                        </div>
-                        <button type="button" class="btn btn-secondary request-edit-close" @click="closeModal()">Close</button>
+    <!-- Selection Modals -->
+    <div class="modal-overlay" x-show="isEditModalOpen" x-cloak x-transition x-on:keydown.escape.window="if (isEditModalOpen) closeModal()">
+        <div class="modal-content request-edit-modal" @click.away="closeModal()" @click.stop>
+            <div class="modal-stack">
+                <div class="request-edit-modal-head">
+                    <div>
+                        <h2 class="modal-title">Edit pending request</h2>
+                        <p class="request-helper request-edit-modal-copy">Adjust the date range, absence type, or reason before your manager reviews this request.</p>
                     </div>
-
-                    @if($editingRequest)
-                        <div class="selection-summary">
-                            <div class="selection-summary-header">
-                                <span class="selection-summary-title">Current request</span>
-                                <span>{{ $editingRequest['date_label'] }} · {{ $editingRequest['date_count'] }} day(s)</span>
-                            </div>
-
-                            <div class="selection-chip-list">
-                                <span class="selection-chip">
-                                    <span class="chip-dot" style="background: {{ $editingRequestOption?->color ?? '#94a3b8' }};"></span>
-                                    {{ $editingRequestOption?->label ?? $editingRequest['type'] }}
-                                </span>
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="request-edit-form">
-                        <div class="request-edit-grid">
-                            <label class="request-field">
-                                <span>Start date</span>
-                                <input type="date" class="request-input" wire:model.live="editingRequestStartDate">
-                            </label>
-
-                            <label class="request-field">
-                                <span>End date</span>
-                                <input type="date" class="request-input" wire:model.live="editingRequestEndDate">
-                            </label>
-
-                            <label class="request-field request-field-full">
-                                <span>Absence type</span>
-                                <select class="request-input" wire:model.live="editingRequestType">
-                                    @foreach($absenceOptions as $absenceOption)
-                                        <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-
-                            <label class="request-field request-field-full">
-                                <span>Reason</span>
-                                <textarea class="request-textarea" wire:model.live="editingRequestReason" rows="4" placeholder="Add a reason (optional)..."></textarea>
-                            </label>
-                        </div>
-
-                        <div class="modal-actions request-edit-modal-actions">
-                            <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
-                            <x-loading-button type="button" loading-target="deleteEditingRequest" wire:click="deleteEditingRequest" class="btn btn-danger">Delete request</x-loading-button>
-                            <x-loading-button type="button" wire:click="updatePendingRequest" class="btn btn-primary">Save changes</x-loading-button>
-                        </div>
-                    </div>
+                    <button type="button" class="btn btn-secondary request-edit-close" @click="closeModal()">Close</button>
                 </div>
-            </template>
 
-            <template x-if="!isEditModalOpen">
-                <div class="modal-stack">
-                    <h2 class="modal-title">Define Absence</h2>
-
-                    <div class="selection-summary" x-show="selectedDates.length > 0">
+                @if($editingRequest)
+                    <div class="selection-summary">
                         <div class="selection-summary-header">
-                            <span class="selection-summary-title">Selected days</span>
-                            <span x-text="selectionStatsLabel"></span>
+                            <span class="selection-summary-title">Current request</span>
+                            <span>{{ $editingRequest['date_label'] }} · {{ $editingRequest['date_count'] }} day(s)</span>
                         </div>
 
                         <div class="selection-chip-list">
-                            <template x-for="span in selectedDateSpans" :key="span.key">
-                                <span class="selection-chip" x-text="span.label"></span>
-                            </template>
+                            <span class="selection-chip">
+                                <span class="chip-dot" style="background: {{ $editingRequestOption?->color ?? '#94a3b8' }};"></span>
+                                {{ $editingRequestOption?->label ?? $editingRequest['type'] }}
+                            </span>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="request-edit-form">
+                    <div class="request-edit-grid">
+                        <label class="request-field">
+                            <span>Start date</span>
+                            <input type="date" class="request-input" wire:model.live="editingRequestStartDate">
+                        </label>
+
+                        <label class="request-field">
+                            <span>End date</span>
+                            <input type="date" class="request-input" wire:model.live="editingRequestEndDate">
+                        </label>
+
+                        <label class="request-field request-field-full">
+                            <span>Absence type</span>
+                            <select class="request-input" wire:model.live="editingRequestType">
+                                @foreach($absenceOptions as $absenceOption)
+                                    <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="request-field request-field-full">
+                            <span>Reason</span>
+                            <textarea class="request-textarea" wire:model.live="editingRequestReason" rows="4" placeholder="Add a reason (optional)..."></textarea>
+                        </label>
+                    </div>
+
+                    <div class="modal-actions request-edit-modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                        <x-loading-button type="button" loading-target="deleteEditingRequest" wire:click="deleteEditingRequest" class="btn btn-danger">Delete request</x-loading-button>
+                        <x-loading-button type="button" wire:click="updatePendingRequest" class="btn btn-primary">Save changes</x-loading-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="isQuickAddModalOpen" x-cloak x-transition x-on:keydown.escape.window="if (isQuickAddModalOpen) closeModal()">
+        <div class="modal-content request-edit-modal" @click.away="closeModal()" @click.stop>
+            <div class="modal-stack">
+                <div class="request-edit-modal-head">
+                    <div>
+                        <h2 class="modal-title">Add absence by date</h2>
+                        <p class="request-helper request-edit-modal-copy">Choose a start and end date if you prefer not to drag across the planner.</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary request-edit-close" @click="closeModal()">Close</button>
+                </div>
+
+                <div class="request-edit-form">
+                    <div class="request-edit-grid">
+                        <label class="request-field">
+                            <span>Start date</span>
+                            <input type="date" class="request-input" x-model="mobileStartDate">
+                        </label>
+
+                        <label class="request-field">
+                            <span>End date</span>
+                            <input type="date" class="request-input" x-model="mobileEndDate">
+                        </label>
+
+                        <label class="request-field request-field-full">
+                            <span>Absence type</span>
+                            <select class="request-input" x-model="mobileAbsenceType">
+                                @foreach($absenceOptions as $absenceOption)
+                                    <option value="{{ $absenceOption->code }}">{{ $absenceOption->label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="request-field request-field-full">
+                            <span>Reason</span>
+                            <textarea class="request-textarea" x-model="mobileReason" rows="4" placeholder="Add a reason (optional)..."></textarea>
+                        </label>
+                    </div>
+
+                    <div class="selection-summary" x-show="mobileDateSpanLabel">
+                        <div class="selection-summary-header">
+                            <span class="selection-summary-title">Selected span</span>
+                            <span x-text="mobileDateSpanLabel"></span>
                         </div>
                     </div>
 
@@ -577,23 +634,76 @@
                         </p>
                     </div>
 
-                    <div class="type-selector">
-                        @foreach($absenceOptions as $option)
-                            <button type="button" class="type-btn" :class="{ 'active': absenceType === '{{ $option->code }}' }" @click.prevent.stop="absenceType = '{{ $option->code }}'">
-                                <span class="chip-dot" style="background: {{ $option->color }};"></span> {{ $option->label }}
-                            </button>
-                        @endforeach
-                    </div>
-
-                    <textarea class="reason-input" x-model="reason" placeholder="Add a reason (optional)..." rows="3"></textarea>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" @click.prevent.stop="closeModal()">Cancel</button>
-                        <x-loading-button type="button" loading-target="removeAbsence" class="btn btn-danger" @click.prevent.stop="remove()">Clear Selection</x-loading-button>
-                        <x-loading-button type="button" loading-target="applyAbsence" class="btn btn-primary" @click.prevent.stop="apply()">Apply Absence</x-loading-button>
+                    <div class="modal-actions request-edit-modal-actions">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" :disabled="!mobileQuickAddReady" @click="submitMobileQuickAdd()">Apply absence</button>
                     </div>
                 </div>
-            </template>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="showModal" x-cloak x-transition x-on:keydown.escape.window="if (showModal) reset()">
+        <div class="modal-content" @click.away="reset()" @click.stop>
+            <div class="modal-stack">
+                <h2 class="modal-title">Define Absence</h2>
+
+                <div class="selection-summary" x-show="selectedDates.length > 0">
+                    <div class="selection-summary-header">
+                        <span class="selection-summary-title">Selected days</span>
+                        <span x-text="selectionStatsLabel"></span>
+                    </div>
+
+                    <div class="selection-chip-list">
+                        <template x-for="selectedDateSpan in selectedDateSpans" :key="selectedDateSpan.key">
+                            <span class="selection-chip" x-text="selectedDateSpan.label"></span>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="selection-summary selection-summary-warning" x-show="selectedOverlapDates.length > 0">
+                    <div class="selection-summary-header">
+                        <span class="selection-summary-title">Overwrite warning</span>
+                        <span x-text="`${selectedOverlapDates.length} day(s)`"></span>
+                    </div>
+
+                    <p class="selection-summary-copy">
+                        Applying this absence will replace the existing absence already set on these selected days.
+                    </p>
+
+                    <p class="selection-summary-copy" x-text="selectedOverlapLabelsText"></p>
+                </div>
+
+                <div class="selection-summary">
+                    <div class="selection-summary-header">
+                        <span class="selection-summary-title">Attester</span>
+                    </div>
+
+                    <p class="selection-summary-copy">
+                        @if($currentUser?->manager)
+                            {{ $currentUser->manager->name }} will attest this absence.
+                        @else
+                            No attester needed. This absence will be approved automatically.
+                        @endif
+                    </p>
+                </div>
+
+                <label class="request-field request-field-full">
+                    <span>Absence type</span>
+                    <select class="request-input" x-model="absenceType" @change="syncAbsenceTypes(absenceType)">
+                        @foreach($absenceOptions as $option)
+                            <option value="{{ $option->code }}">{{ $option->label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <textarea class="reason-input" x-model="reason" placeholder="Add a reason (optional)..." rows="3"></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" @click.prevent.stop="reset()">Cancel</button>
+                    <button type="button" class="btn btn-danger" @click.prevent.stop="clearSelectedRange()">Clear Selection</button>
+                    <button type="button" class="btn btn-primary" :disabled="selectedDates.length === 0 || !absenceType" @click.prevent.stop="apply()">Apply Absence</button>
+                </div>
             </div>
         </div>
     </div>
@@ -602,10 +712,13 @@
         document.addEventListener('alpine:init', () => {
             Alpine.data('planner', ({
                 initialViewDate,
+                applicationTimezone,
                 initialDepartments = [],
                 availableDepartments = [],
                 availableSites = [],
                 availableManagers = [],
+                currentUserAbsenceLookup = {},
+                currentUserHasManager = false,
                 editableUserId = null,
                 initialAbsenceType = null,
                 editingRequestUuid = null,
@@ -614,6 +727,7 @@
                 selectedManagers,
             }) => ({
                 initialViewDate,
+                applicationTimezone,
                 editableUserId,
                 editingRequestUuid,
                 currentUserHighlightTimeout: null,
@@ -623,6 +737,7 @@
                 selectionEnd: null,
                 selectedUser: null,
                 showModal: false,
+                showQuickAddModal: false,
                 showMobileQuickAdd: false,
                 absenceType: initialAbsenceType,
                 reason: '',
@@ -633,9 +748,13 @@
                 availableDepartments,
                 availableSites,
                 availableManagers,
+                currentUserAbsenceLookup,
+                currentUserHasManager,
                 selectedDepartments,
                 selectedSites,
                 selectedManagers,
+                plannerNotice: '',
+                plannerNoticeTone: 'info',
                 departmentFilterOpen: false,
                 siteFilterOpen: false,
                 managerFilterOpen: false,
@@ -850,8 +969,12 @@
                     return Boolean(this.editingRequestUuid);
                 },
 
+                get isQuickAddModalOpen() {
+                    return this.showQuickAddModal;
+                },
+
                 get isModalOpen() {
-                    return this.showModal || this.isEditModalOpen;
+                    return this.showModal || this.isEditModalOpen || this.isQuickAddModalOpen;
                 },
 
                 get selectedRange() {
@@ -878,7 +1001,7 @@
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
-                        timeZone: 'UTC',
+                        timeZone: this.applicationTimezone,
                     }).format(date);
                 },
 
@@ -902,19 +1025,59 @@
                         return [];
                     }
 
+                    return this.buildDateSpans(this.selectedDates.map((date) => date.iso));
+                },
+
+                get selectedOverlapDates() {
+                    return this.selectedDates.filter((date) => this.wouldOverwriteDate(date.iso, this.absenceType));
+                },
+
+                get selectedOverlapSpans() {
+                    return this.buildDateSpans(this.selectedOverlapDates.map((date) => date.iso));
+                },
+
+                get selectedOverlapLabelsText() {
+                    return this.selectedOverlapSpans.map((overlapSpan) => overlapSpan.label).join(', ');
+                },
+
+                get mobileSelectedDates() {
+                    return this.expandIsoDateRange(this.mobileStartDate, this.mobileEndDate).map((iso) => ({
+                        iso,
+                        label: this.formatSelectionDate(iso),
+                    }));
+                },
+
+                get mobileOverlapDates() {
+                    return this.mobileSelectedDates.filter((date) => this.wouldOverwriteDate(date.iso, this.mobileAbsenceType));
+                },
+
+                get mobileOverlapSpans() {
+                    return this.buildDateSpans(this.mobileOverlapDates.map((date) => date.iso));
+                },
+
+                get mobileOverlapLabelsText() {
+                    return this.mobileOverlapSpans.map((overlapSpan) => overlapSpan.label).join(', ');
+                },
+
+                buildDateSpans(isoDates) {
+                    if (isoDates.length === 0) {
+                        return [];
+                    }
+
                     const spans = [];
 
-                    this.selectedDates.forEach((date) => {
-                        const currentDate = new Date(`${date.iso}T00:00:00Z`);
+                    isoDates.forEach((isoDate) => {
+                        const currentDate = new Date(`${isoDate}T00:00:00Z`);
+                        const currentLabel = this.formatSelectionDate(isoDate);
                         const previousSpan = spans[spans.length - 1];
 
                         if (!previousSpan) {
                             spans.push({
-                                key: date.iso,
-                                startIso: date.iso,
-                                endIso: date.iso,
-                                startLabel: date.label,
-                                endLabel: date.label,
+                                key: isoDate,
+                                startIso: isoDate,
+                                endIso: isoDate,
+                                startLabel: currentLabel,
+                                endLabel: currentLabel,
                             });
 
                             return;
@@ -924,18 +1087,18 @@
                         const dayDiff = (currentDate.getTime() - previousEndDate.getTime()) / 86400000;
 
                         if (dayDiff === 1) {
-                            previousSpan.endIso = date.iso;
-                            previousSpan.endLabel = date.label;
+                            previousSpan.endIso = isoDate;
+                            previousSpan.endLabel = currentLabel;
 
                             return;
                         }
 
                         spans.push({
-                            key: date.iso,
-                            startIso: date.iso,
-                            endIso: date.iso,
-                            startLabel: date.label,
-                            endLabel: date.label,
+                            key: isoDate,
+                            startIso: isoDate,
+                            endIso: isoDate,
+                            startLabel: currentLabel,
+                            endLabel: currentLabel,
                         });
                     });
 
@@ -945,6 +1108,43 @@
                             ? span.startLabel
                             : `${span.startLabel} to ${span.endLabel}`,
                     }));
+                },
+
+                expandIsoDateRange(startDate, endDate) {
+                    if (!startDate || !endDate) {
+                        return [];
+                    }
+
+                    const start = new Date(`${startDate}T00:00:00Z`);
+                    const end = new Date(`${endDate}T00:00:00Z`);
+
+                    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+                        return [];
+                    }
+
+                    const dates = [];
+                    const cursor = new Date(start);
+
+                    while (cursor <= end) {
+                        dates.push(cursor.toISOString().slice(0, 10));
+                        cursor.setUTCDate(cursor.getUTCDate() + 1);
+                    }
+
+                    return dates;
+                },
+
+                resultingAbsenceStatus() {
+                    return this.currentUserHasManager ? 'pending' : 'approved';
+                },
+
+                wouldOverwriteDate(isoDate, targetType) {
+                    const existingAbsence = this.currentUserAbsenceLookup[isoDate];
+
+                    if (!existingAbsence || !targetType) {
+                        return false;
+                    }
+
+                    return existingAbsence.type !== targetType || existingAbsence.status !== this.resultingAbsenceStatus();
                 },
 
                 get selectionStatsLabel() {
@@ -971,18 +1171,46 @@
                         : `${startLabel} to ${endLabel}`;
                 },
 
+                syncAbsenceTypes(type) {
+                    if (!type) {
+                        return;
+                    }
+
+                    this.absenceType = type;
+                    this.mobileAbsenceType = type;
+                },
+
                 async openPendingRequestEditor(requestUuid) {
                     if (!requestUuid) {
                         return;
                     }
 
                     this.showModal = false;
+                    this.showQuickAddModal = false;
                     await this.$wire.$call('startEditingRequest', requestUuid);
+                },
+
+                openQuickAddModal() {
+                    if (this.editableUserId === null) {
+                        return;
+                    }
+
+                    this.showModal = false;
+                    this.isDragging = false;
+                    this.clearSelection();
+                    this.showQuickAddModal = true;
+                    this.syncAbsenceTypes(this.absenceType ?? this.mobileAbsenceType);
                 },
 
                 closeModal() {
                     if (this.isEditModalOpen) {
                         this.$wire.$call('cancelEditingRequest');
+
+                        return;
+                    }
+
+                    if (this.isQuickAddModalOpen) {
+                        this.resetMobileQuickAdd();
 
                         return;
                     }
@@ -993,15 +1221,46 @@
                 async apply() {
                     if (this.selectedUser === null) return;
                     const dates = this.selectedDates.map((date) => date.iso);
-                    await this.$wire.$call('applyAbsence', this.selectedUser, dates, this.absenceType, this.reason);
-                    this.reset();
+                    const result = await this.$wire.$call('applyAbsence', this.selectedUser, dates, this.absenceType, this.reason);
+
+                    if (result?.message) {
+                        this.setPlannerNotice(result.message, result.tone ?? 'info');
+                    }
+
+                    if (result?.tone === 'success') {
+                        this.syncAbsenceTypes(this.absenceType);
+                        this.reset();
+                    }
                 },
 
-                async remove() {
-                    if (this.selectedUser === null) return;
+                async clearSelectedRange() {
+                    if (this.selectedUser === null || this.selectedDates.length === 0) {
+                        this.setPlannerNotice('No dates were selected.', 'warning');
+                        this.reset();
+
+                        return;
+                    }
+
+                    const userId = this.selectedUser;
                     const dates = this.selectedDates.map((date) => date.iso);
-                    await this.$wire.$call('removeAbsence', this.selectedUser, dates);
+
                     this.reset();
+
+                    try {
+                        const result = await this.$wire.$call('removeAbsence', userId, dates);
+
+                        if (result?.message) {
+                            this.setPlannerNotice(result.message, result.tone ?? 'info');
+                        }
+                    } catch (error) {
+                        console.error('Unable to clear the selected range.', error);
+                        this.setPlannerNotice('Unable to clear the selected dates right now.', 'warning');
+                    }
+                },
+
+                setPlannerNotice(message, tone = 'info') {
+                    this.plannerNotice = message;
+                    this.plannerNoticeTone = tone;
                 },
 
                 toggleMobileQuickAdd() {
@@ -1019,7 +1278,7 @@
                         return;
                     }
 
-                    await this.$wire.$call(
+                    const result = await this.$wire.$call(
                         'applyAbsenceSpan',
                         this.editableUserId,
                         this.mobileStartDate,
@@ -1028,15 +1287,26 @@
                         this.mobileReason,
                     );
 
-                    this.resetMobileQuickAdd();
+                    if (result?.message) {
+                        this.setPlannerNotice(result.message, result.tone ?? 'info');
+                    }
+
+                    if (result?.tone === 'success') {
+                        this.syncAbsenceTypes(this.mobileAbsenceType);
+                        this.resetMobileQuickAdd();
+                    }
                 },
 
                 resetMobileQuickAdd() {
+                    this.showModal = false;
+                    this.isDragging = false;
+                    this.clearSelection();
                     this.showMobileQuickAdd = false;
+                    this.showQuickAddModal = false;
                     this.mobileStartDate = '';
                     this.mobileEndDate = '';
                     this.mobileReason = '';
-                    this.mobileAbsenceType = this.absenceType ?? this.mobileAbsenceType;
+                    this.syncAbsenceTypes(this.absenceType ?? this.mobileAbsenceType);
                 },
 
                 clearSelection() {

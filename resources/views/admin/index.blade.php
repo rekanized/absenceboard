@@ -1,5 +1,21 @@
 <x-layouts.app :layout-current-user="$layoutCurrentUser">
-<div class="page-shell page-shell-admin">
+@php
+    $newAbsenceOptionFields = ['code', 'label', 'color'];
+    $absenceOptionFormSubmitted = old('_absence_option_form') === '1';
+    $absenceOptionModalShouldOpen = $absenceOptionFormSubmitted
+        && collect($newAbsenceOptionFields)->contains(
+            fn (string $field) => ! old('option_id') && ($errors->has($field) || old($field) !== null)
+        );
+    $pageErrorMessages = collect($errors->getBag('default')->messages());
+
+    if ($absenceOptionFormSubmitted && ! old('option_id')) {
+        $pageErrorMessages = $pageErrorMessages->except($newAbsenceOptionFields);
+    }
+
+    $pageErrorList = $pageErrorMessages->flatten()->values();
+@endphp
+
+<div class="page-shell page-shell-admin" x-data="{ isAbsenceOptionModalOpen: @js($absenceOptionModalShouldOpen) }">
     <section class="admin-card admin-stack">
         <div>
             <p class="planner-kicker">Admin workspace</p>
@@ -9,9 +25,9 @@
             </p>
         </div>
 
-        @if ($errors->any())
+        @if ($pageErrorList->isNotEmpty())
             <ul class="error-list">
-                @foreach ($errors->all() as $error)
+                @foreach ($pageErrorList as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
@@ -42,6 +58,27 @@
         </section>
 
         <section class="admin-card">
+            <h2>Application timezone</h2>
+            <p style="color: var(--text-soft);">Choose the default timezone used for application dates and times.</p>
+
+            <form method="POST" action="{{ route('admin.application-timezone.update') }}" class="admin-form">
+                @csrf
+                <label class="admin-label">
+                    Timezone
+                    <select name="app_timezone" class="admin-input">
+                        @foreach ($timezoneOptions as $timezoneOption)
+                            <option value="{{ $timezoneOption }}" @selected(old('app_timezone', $applicationTimezone) === $timezoneOption)>
+                                {{ $timezoneOption }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <button type="submit" class="admin-button">Save timezone</button>
+            </form>
+        </section>
+
+        <section class="admin-card">
             <h2>Request log</h2>
             <p style="color: var(--text-soft);">
                 Review submitted, updated, approved, rejected, and deleted absence requests.
@@ -56,35 +93,16 @@
     </div>
 
     <section class="admin-card admin-stack">
-        <div>
-            <h2>Absence options</h2>
-            <p style="color: var(--text-soft); max-width: 760px; margin-bottom: 0;">
-                If an option has already been used, the warning below appears before you save or delete it.
-            </p>
-        </div>
-
-        <form method="POST" action="{{ route('admin.absence-options.store') }}" class="admin-form admin-form-inline">
-            @csrf
-
-            <label class="admin-label">
-                Code
-                <input name="code" class="admin-input" maxlength="10" value="{{ old('option_id') ? '' : old('code') }}" placeholder="WFH">
-            </label>
-
-            <label class="admin-label">
-                Label
-                <input name="label" class="admin-input" value="{{ old('option_id') ? '' : old('label') }}" placeholder="Work from home">
-            </label>
-
-            <label class="admin-label">
-                Color
-                <input type="color" name="color" class="admin-input" value="{{ old('option_id') ? '#4ade80' : old('color', '#4ade80') }}" style="padding: 6px 8px; min-height: 48px;">
-            </label>
-
-            <div class="admin-inline-actions">
-                <button type="submit" class="admin-button">Add option</button>
+        <div class="admin-section-toolbar">
+            <div class="admin-section-heading">
+                <h2>Absence options</h2>
+                <p style="color: var(--text-soft); max-width: 760px; margin-bottom: 0;">
+                    If an option has already been used, the warning below appears before you save or delete it.
+                </p>
             </div>
-        </form>
+
+            <button type="button" class="admin-button" @click="isAbsenceOptionModalOpen = true">Create absence option</button>
+        </div>
 
         <div class="admin-options-grid">
             @foreach ($absenceOptions as $option)
@@ -207,6 +225,83 @@
             @endforeach
         </div>
     </section>
+
+    <div
+        class="modal-overlay"
+        x-show="isAbsenceOptionModalOpen"
+        x-cloak
+        x-transition
+        x-on:keydown.escape.window="isAbsenceOptionModalOpen = false"
+    >
+        <div
+            class="modal-content admin-create-option-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="absence-option-modal-title"
+            @click.away="isAbsenceOptionModalOpen = false"
+            @click.stop
+        >
+            <div class="modal-stack">
+                <div class="request-edit-modal-head">
+                    <div>
+                        <p class="planner-kicker" style="margin-bottom: 8px;">Planner setup</p>
+                        <h2 class="modal-title" id="absence-option-modal-title">Create absence option</h2>
+                        <p class="admin-helper-text admin-create-option-modal-copy">Add a new planner option with a short code, a clear label, and a color that remains distinct in the schedule.</p>
+                    </div>
+
+                    <button type="button" class="admin-button secondary request-edit-close" @click="isAbsenceOptionModalOpen = false">Close</button>
+                </div>
+
+                <form method="POST" action="{{ route('admin.absence-options.store') }}" class="admin-form admin-create-option-form">
+                    @csrf
+                    <input type="hidden" name="_absence_option_form" value="1">
+
+                    <section class="admin-create-option-section">
+                        <div class="admin-create-option-grid">
+                            <label class="admin-label">
+                                Code
+                                <input name="code" class="admin-input" maxlength="10" value="{{ old('option_id') ? '' : old('code') }}" placeholder="WFH">
+                                <span class="admin-helper-text">Use a short planner code, ideally under 10 characters.</span>
+                                @error('code')
+                                    <span class="admin-field-error">{{ $message }}</span>
+                                @enderror
+                            </label>
+
+                            <label class="admin-label admin-create-option-field-wide">
+                                Label
+                                <input name="label" class="admin-input" value="{{ old('option_id') ? '' : old('label') }}" placeholder="Work from home">
+                                <span class="admin-helper-text">This is what people see in the planner and request details.</span>
+                                @error('label')
+                                    <span class="admin-field-error">{{ $message }}</span>
+                                @enderror
+                            </label>
+
+                            <label class="admin-label admin-create-option-field-wide">
+                                Color
+                                <div class="admin-option-color-control admin-create-option-color-control">
+                                    <input type="color" name="color" class="admin-input" value="{{ old('option_id') ? '#4ade80' : old('color', '#4ade80') }}" style="padding: 6px 8px; min-height: 48px;">
+
+                                    <div class="admin-color-preview admin-color-preview-inline">
+                                        <span class="option-dot" style="width: 16px; height: 16px; background: {{ old('option_id') ? '#4ade80' : old('color', '#4ade80') }};"></span>
+                                        <span class="admin-color-value">{{ old('option_id') ? '#4ade80' : old('color', '#4ade80') }}</span>
+                                    </div>
+                                </div>
+                                <span class="admin-helper-text">Pick a color that stays readable against the planner background.</span>
+                                @error('color')
+                                    <span class="admin-field-error">{{ $message }}</span>
+                                @enderror
+                            </label>
+                        </div>
+                    </section>
+
+                    <div class="modal-actions request-edit-modal-actions">
+                        <button type="button" class="admin-button secondary" @click="isAbsenceOptionModalOpen = false">Cancel</button>
+                        <button type="submit" class="admin-button">Create absence option</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 </x-layouts.app>

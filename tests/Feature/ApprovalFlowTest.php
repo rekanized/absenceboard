@@ -131,7 +131,7 @@ class ApprovalFlowTest extends TestCase
         $this->assertSame($user->id, $absence->approved_by);
     }
 
-    public function test_existing_absences_cannot_be_overwritten_by_submitting_a_new_request(): void
+    public function test_existing_absences_are_overwritten_by_submitting_a_new_request(): void
     {
         AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
         AbsenceOption::create(['code' => 'B', 'label' => 'Parental leave', 'color' => '#facc15', 'sort_order' => 2]);
@@ -159,13 +159,69 @@ class ApprovalFlowTest extends TestCase
         $this->assertDatabaseHas('absences', [
             'user_id' => $user->id,
             'date' => '2026-08-04',
+                'type' => 'B',
+            'status' => Absence::STATUS_APPROVED,
+        ]);
+            $this->assertDatabaseMissing('absences', [
+                'user_id' => $user->id,
+                'date' => '2026-08-04',
+                'type' => 'S',
+                'request_uuid' => 'approved-request',
+            ]);
+    }
+
+    public function test_new_days_can_be_added_around_existing_approved_days_and_overwrite_them(): void
+    {
+        AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
+        AbsenceOption::create(['code' => 'B', 'label' => 'Parental leave', 'color' => '#facc15', 'sort_order' => 2]);
+
+        $department = Department::create(['name' => 'Sales']);
+        $user = $department->users()->create(['name' => 'Solo User', 'location' => 'Malmö']);
+
+        Absence::create([
+            'user_id' => $user->id,
             'type' => 'S',
+            'reason' => 'Approved vacation',
             'status' => Absence::STATUS_APPROVED,
             'request_uuid' => 'approved-request',
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+            'date' => '2026-08-04',
+        ]);
+
+        session(['current_user_id' => $user->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('applyAbsence', $user->id, ['2026-08-04', '2026-08-05', '2026-08-06'], 'B', 'Extend request');
+
+        $this->assertDatabaseCount('absences', 3);
+        $this->assertDatabaseHas('absences', [
+            'user_id' => $user->id,
+            'date' => '2026-08-04',
+                'type' => 'B',
+            'status' => Absence::STATUS_APPROVED,
+        ]);
+            $this->assertDatabaseMissing('absences', [
+                'user_id' => $user->id,
+                'date' => '2026-08-04',
+                'type' => 'S',
+                'request_uuid' => 'approved-request',
+            ]);
+        $this->assertDatabaseHas('absences', [
+            'user_id' => $user->id,
+            'date' => '2026-08-05',
+            'type' => 'B',
+            'status' => Absence::STATUS_APPROVED,
+        ]);
+        $this->assertDatabaseHas('absences', [
+            'user_id' => $user->id,
+            'date' => '2026-08-06',
+            'type' => 'B',
+            'status' => Absence::STATUS_APPROVED,
         ]);
     }
 
-    public function test_approved_absence_cannot_be_deleted_through_the_grid_action(): void
+    public function test_approved_absence_can_be_deleted_through_the_grid_action(): void
     {
         AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
 
@@ -188,7 +244,7 @@ class ApprovalFlowTest extends TestCase
         Livewire::test(VacationPlanner::class)
             ->call('removeAbsence', $user->id, ['2026-08-04']);
 
-        $this->assertDatabaseHas('absences', [
+        $this->assertDatabaseMissing('absences', [
             'user_id' => $user->id,
             'date' => '2026-08-04',
             'status' => Absence::STATUS_APPROVED,
@@ -254,6 +310,60 @@ class ApprovalFlowTest extends TestCase
 
         Livewire::test(VacationPlanner::class)
             ->call('deletePendingRequest', $requestUuid);
+
+        $this->assertDatabaseCount('absences', 0);
+    }
+
+    public function test_pending_absence_can_be_removed_via_the_component_method(): void
+    {
+        AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
+
+        $department = Department::create(['name' => 'Finance']);
+        $manager = $department->users()->create(['name' => 'Maja Manager', 'location' => 'Stockholm']);
+        $employee = $department->users()->create(['name' => 'Dana Employee', 'location' => 'Stockholm', 'manager_id' => $manager->id]);
+
+        session(['current_user_id' => $employee->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('applyAbsence', $employee->id, ['2026-10-11', '2026-10-12'], 'S', 'Needs review');
+
+        Livewire::test(VacationPlanner::class)
+            ->call('removeAbsence', $employee->id, ['2026-10-11', '2026-10-12']);
+
+        $this->assertDatabaseCount('absences', 0);
+    }
+
+    public function test_mixed_pending_and_approved_absences_can_be_cleared_together(): void
+    {
+        AbsenceOption::create(['code' => 'S', 'label' => 'Vacation', 'color' => '#4ade80', 'sort_order' => 1]);
+
+        $department = Department::create(['name' => 'Finance']);
+        $user = $department->users()->create(['name' => 'Dana Employee', 'location' => 'Stockholm']);
+
+        Absence::create([
+            'user_id' => $user->id,
+            'type' => 'S',
+            'reason' => 'Approved vacation',
+            'status' => Absence::STATUS_APPROVED,
+            'request_uuid' => 'approved-request',
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+            'date' => '2026-10-11',
+        ]);
+
+        Absence::create([
+            'user_id' => $user->id,
+            'type' => 'S',
+            'reason' => 'Pending vacation',
+            'status' => Absence::STATUS_PENDING,
+            'request_uuid' => 'pending-request',
+            'date' => '2026-10-12',
+        ]);
+
+        session(['current_user_id' => $user->id]);
+
+        Livewire::test(VacationPlanner::class)
+            ->call('removeAbsence', $user->id, ['2026-10-11', '2026-10-12']);
 
         $this->assertDatabaseCount('absences', 0);
     }

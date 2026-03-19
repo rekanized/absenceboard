@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Absence;
+use App\Models\AbsenceRequestLog;
 use App\Models\User;
 use App\Support\HolidayCalendar;
 use Carbon\Carbon;
@@ -80,6 +81,42 @@ class ProfileController extends Controller
         return redirect()->back();
     }
 
+    public function leaveImpersonation(Request $request): RedirectResponse
+    {
+        $currentUser = $this->currentUserFromSession($request);
+        $impersonator = $this->impersonatorFromSession($request);
+
+        abort_if($currentUser === null || $impersonator === null, 403);
+
+        AbsenceRequestLog::query()->create([
+            'request_uuid' => null,
+            'user_id' => $currentUser->id,
+            'actor_id' => $impersonator->id,
+            'action' => AbsenceRequestLog::ACTION_IMPERSONATION_ENDED,
+            'absence_type' => null,
+            'status' => 'ended',
+            'date_start' => null,
+            'date_end' => null,
+            'date_count' => 0,
+            'reason' => sprintf('%s ended the impersonation session and returned to the admin workspace.', $impersonator->name),
+            'metadata' => [
+                'source' => 'admin_impersonation',
+                'impersonated_user_id' => $currentUser->id,
+                'impersonated_user_name' => $currentUser->name,
+                'impersonator_user_id' => $impersonator->id,
+                'impersonator_user_name' => $impersonator->name,
+            ],
+        ]);
+
+        $request->session()->regenerate();
+        $request->session()->forget('impersonator_user_id');
+        $request->session()->put('current_user_id', $impersonator->id);
+
+        return redirect()
+            ->route('admin.users')
+            ->with('status', sprintf('Returned to your admin session as %s.', $impersonator->name));
+    }
+
     private function currentUserFromSession(Request $request): ?User
     {
         $currentUserId = $request->session()->get('current_user_id');
@@ -97,6 +134,20 @@ class ProfileController extends Controller
                 'manager.department:id,name',
             ])
             ->find($currentUserId);
+    }
+
+    private function impersonatorFromSession(Request $request): ?User
+    {
+        $impersonatorUserId = $request->session()->get('impersonator_user_id');
+
+        if (! is_numeric($impersonatorUserId)) {
+            return null;
+        }
+
+        return User::query()
+            ->active()
+            ->select(['id', 'name', 'is_admin'])
+            ->find((int) $impersonatorUserId);
     }
 
     private function requestHistoryFor(int $userId): Collection

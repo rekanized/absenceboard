@@ -58,6 +58,7 @@ class ManualAuthenticationController extends Controller
 
         RateLimiter::clear($rateLimitKey);
         $request->session()->regenerate();
+        $request->session()->forget('impersonator_user_id');
         $request->session()->put('current_user_id', $user->id);
 
         return redirect()->intended(route('planner'));

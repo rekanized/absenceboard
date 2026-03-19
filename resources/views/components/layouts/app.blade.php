@@ -18,6 +18,18 @@
     @php
         $applicationName = config('app.name', 'LeaveBoard');
         $layoutCurrentUser = $layoutCurrentUser ?? $currentUser ?? null;
+        $impersonatorUserId = session('impersonator_user_id');
+        $impersonatorUser = is_numeric($impersonatorUserId)
+            ? \App\Models\User::query()
+                ->active()
+                ->admins()
+                ->select(['id', 'department_id', 'name', 'email'])
+                ->with(['department:id,name'])
+                ->find((int) $impersonatorUserId)
+            : null;
+        $isImpersonating = $impersonatorUser !== null
+            && $layoutCurrentUser !== null
+            && $impersonatorUser->id !== $layoutCurrentUser->id;
         $layoutInitials = $layoutCurrentUser
             ? collect(explode(' ', $layoutCurrentUser->name))
                 ->filter()
@@ -109,11 +121,14 @@
                     <div class="sidebar-user">
                         <span class="sidebar-user-avatar">{{ $layoutInitials }}</span>
                         <span class="sidebar-user-copy">
-                            <span class="sidebar-user-label">Signed in user</span>
+                            <span class="sidebar-user-label">{{ $isImpersonating ? 'Viewing as' : 'Signed in user' }}</span>
                             <span class="sidebar-user-name">{{ $layoutCurrentUser->name }}</span>
                             <span class="sidebar-user-meta">{{ $layoutCurrentUser->department?->name ?? 'No department set' }}</span>
                             @if ($layoutCurrentUser->email)
                                 <span class="sidebar-user-meta">{{ $layoutCurrentUser->email }}</span>
+                            @endif
+                            @if ($isImpersonating)
+                                <span class="sidebar-user-meta">Admin session: {{ $impersonatorUser->name }}</span>
                             @endif
                             @if ($layoutCurrentUser->manager)
                                 <span class="sidebar-user-meta">Manager: {{ $layoutCurrentUser->manager->name }}</span>
@@ -140,6 +155,22 @@
             </aside>
 
             <div class="app-content">
+                @if ($isImpersonating)
+                    <div class="app-status-wrap">
+                        <div class="app-status" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                            <span>Impersonating {{ $layoutCurrentUser->name }} from the admin session for {{ $impersonatorUser->name }}.</span>
+
+                            <form method="POST" action="{{ route('profile.impersonation.leave') }}" style="margin: 0;">
+                                @csrf
+                                <button type="submit" class="sidebar-footer-link sidebar-footer-button" style="min-height: auto; padding: 8px 12px; border: 0;">
+                                    <span class="icon">undo</span>
+                                    <span>Stop impersonating</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
                 @if (session('status'))
                     <div class="app-status-wrap">
                         <div class="app-status">{{ session('status') }}</div>

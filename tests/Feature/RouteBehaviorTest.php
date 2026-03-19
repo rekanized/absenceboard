@@ -270,4 +270,201 @@ class RouteBehaviorTest extends TestCase
             'sort_order' => 1,
         ]);
     }
+
+    public function test_admin_can_impersonate_another_user_from_user_information(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+        $target = $department->users()->create(['name' => 'Nils Employee', 'location' => 'Malmö']);
+
+        $this
+            ->withSession(['current_user_id' => $admin->id])
+            ->post(route('admin.users.impersonate', $target))
+            ->assertRedirect(route('profile.show'))
+            ->assertSessionHas('current_user_id', $target->id)
+            ->assertSessionHas('impersonator_user_id', $admin->id)
+            ->assertSessionHas('status', 'Now impersonating Nils Employee.');
+
+        $this->assertDatabaseHas('absence_request_logs', [
+            'user_id' => $target->id,
+            'actor_id' => $admin->id,
+            'action' => AbsenceRequestLog::ACTION_IMPERSONATION_STARTED,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_non_admin_cannot_impersonate_another_user(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $user = $department->users()->create(['name' => 'Ella Employee', 'location' => 'Stockholm']);
+        $target = $department->users()->create(['name' => 'Nils Employee', 'location' => 'Malmö']);
+
+        $this
+            ->withSession(['current_user_id' => $user->id])
+            ->post(route('admin.users.impersonate', $target))
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_leave_impersonation_and_return_to_admin_session(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+        $target = $department->users()->create(['name' => 'Nils Employee', 'location' => 'Malmö']);
+
+        $this
+            ->withSession([
+                'current_user_id' => $target->id,
+                'impersonator_user_id' => $admin->id,
+            ])
+            ->post(route('profile.impersonation.leave'))
+            ->assertRedirect(route('admin.users'))
+            ->assertSessionHas('current_user_id', $admin->id)
+            ->assertSessionMissing('impersonator_user_id')
+            ->assertSessionHas('status', 'Returned to your admin session as Asta Admin.');
+
+        $this->assertDatabaseHas('absence_request_logs', [
+            'user_id' => $target->id,
+            'actor_id' => $admin->id,
+            'action' => AbsenceRequestLog::ACTION_IMPERSONATION_ENDED,
+            'status' => 'ended',
+        ]);
+    }
+
+    public function test_impersonation_session_is_cleared_if_original_admin_loses_admin_access(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+        $target = $department->users()->create(['name' => 'Nils Employee', 'location' => 'Malmö']);
+
+        $admin->update(['is_admin' => false]);
+
+        $this
+            ->withSession([
+                'current_user_id' => $target->id,
+                'impersonator_user_id' => $admin->id,
+            ])
+            ->get(route('profile.show'))
+            ->assertRedirect(route('home'))
+            ->assertSessionMissing('current_user_id')
+            ->assertSessionMissing('impersonator_user_id');
+    }
+
+    public function test_admin_user_filters_can_combine_search_department_site_status_and_access(): void
+    {
+        $engineering = Department::create(['name' => 'Engineering']);
+        $support = Department::create(['name' => 'Support']);
+
+        $admin = $engineering->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+
+        $matchingUser = $support->users()->create([
+            'name' => 'Jordan Support',
+            'email' => 'jordan.support@example.test',
+            'location' => 'Gothenburg',
+            'is_active' => true,
+            'is_admin' => false,
+        ]);
+
+        $support->users()->create([
+            'name' => 'Jordan Admin',
+            'email' => 'jordan.admin@example.test',
+            'location' => 'Gothenburg',
+            'is_active' => true,
+            'is_admin' => true,
+        ]);
+
+        $support->users()->create([
+            'name' => 'Jordan Inactive',
+            'email' => 'jordan.inactive@example.test',
+            'location' => 'Gothenburg',
+            'is_active' => false,
+            'is_admin' => false,
+        ]);
+
+        $engineering->users()->create([
+            'name' => 'Jordan Engineering',
+            'email' => 'jordan.engineering@example.test',
+            'location' => 'Malmö',
+            'is_active' => true,
+            'is_admin' => false,
+        ]);
+
+        $response = $this
+            ->withSession(['current_user_id' => $admin->id])
+            ->get(route('admin.users', [
+                'search' => 'Jordan',
+                'department' => 'Support',
+                'location' => 'Gothenburg',
+                'status' => 'active',
+                'access' => 'standard',
+            ]));
+
+        $response->assertOk();
+
+        $users = $response->viewData('users');
+
+        $this->assertCount(1, $users);
+        $this->assertSame($matchingUser->id, $users->first()->id);
+        $this->assertSame('Jordan', $response->viewData('search'));
+        $this->assertSame('Support', $response->viewData('selectedDepartment'));
+        $this->assertSame('Gothenburg', $response->viewData('selectedLocation'));
+        $this->assertSame('active', $response->viewData('selectedStatus'));
+        $this->assertSame('standard', $response->viewData('selectedAccess'));
+    }
+
+    public function test_admin_logs_route_displays_impersonation_entries(): void
+    {
+        $department = Department::create(['name' => 'Support']);
+        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+        $employee = $department->users()->create(['name' => 'Elsa Employee', 'location' => 'Gothenburg']);
+
+        AbsenceRequestLog::create([
+            'request_uuid' => null,
+            'user_id' => $employee->id,
+            'actor_id' => $admin->id,
+            'action' => AbsenceRequestLog::ACTION_IMPERSONATION_STARTED,
+            'absence_type' => null,
+            'status' => 'active',
+            'date_start' => null,
+            'date_end' => null,
+            'date_count' => 0,
+            'reason' => 'Asta Admin started an impersonation session for support work.',
+            'metadata' => ['source' => 'admin_impersonation'],
+        ]);
+
+        $this
+            ->withSession(['current_user_id' => $admin->id])
+            ->get(route('admin.logs', ['action' => AbsenceRequestLog::ACTION_IMPERSONATION_STARTED]))
+            ->assertOk()
+            ->assertSeeText('Impersonation Started')
+            ->assertSeeText('Elsa Employee')
+            ->assertSeeText('Asta Admin')
+            ->assertSeeText('Support impersonation');
+    }
+
+    public function test_absence_option_validation_error_is_only_rendered_inside_the_modal(): void
+    {
+        $department = Department::create(['name' => 'Operations']);
+        $admin = $department->users()->create(['name' => 'Asta Admin', 'location' => 'Stockholm', 'is_admin' => true]);
+
+        $response = $this
+            ->from(route('admin.settings'))
+            ->withSession(['current_user_id' => $admin->id])
+            ->followingRedirects()
+            ->post(route('admin.absence-options.store'), [
+                '_absence_option_form' => '1',
+                'code' => 'WFH',
+                'label' => '',
+                'color' => '#22c55e',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertSee('isAbsenceOptionModalOpen: true', false)
+            ->assertSeeText('The label field is required.');
+
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), 'The label field is required.')
+        );
+    }
 }

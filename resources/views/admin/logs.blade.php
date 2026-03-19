@@ -5,7 +5,7 @@
             <div>
                 <h1 style="font-size: 28px;">Request log</h1>
                 <p style="color: #475569; max-width: 760px; margin-bottom: 0;">
-                    Audit trail for absence activity and admin user-status changes.
+                    Audit trail for absence activity, admin user-status changes, and support impersonation sessions.
                 </p>
             </div>
 
@@ -118,6 +118,9 @@
                                             @endif
                                             @if (($metadata['source'] ?? null) === 'admin_user_management')
                                                 <span class="log-meta-pill">Admin user management</span>
+                                            @endif
+                                            @if (($metadata['source'] ?? null) === 'admin_impersonation')
+                                                <span class="log-meta-pill">Support impersonation</span>
                                             @endif
                                         </div>
 

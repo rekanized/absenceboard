@@ -83,6 +83,7 @@ class SetupController extends Controller
         });
 
         $request->session()->regenerate();
+        $request->session()->forget('impersonator_user_id');
         $request->session()->put('current_user_id', $user->id);
 
         return redirect()

@@ -20,10 +20,24 @@ class AzureAuthentication
             return redirect()->route('setup.show');
         }
 
+        $impersonatorUserId = $request->session()->get('impersonator_user_id');
+
+        if ($impersonatorUserId !== null) {
+            $impersonatorUser = is_numeric($impersonatorUserId)
+                ? User::query()->active()->select(['id', 'is_admin'])->find((int) $impersonatorUserId)
+                : null;
+
+            if ($impersonatorUser === null || ! $impersonatorUser->is_admin) {
+                $request->session()->forget(['current_user_id', 'impersonator_user_id']);
+
+                return redirect()->guest(route('home'));
+            }
+        }
+
         $currentUserId = $request->session()->get('current_user_id');
 
         if (! is_numeric($currentUserId)) {
-            $request->session()->forget('current_user_id');
+            $request->session()->forget(['current_user_id', 'impersonator_user_id']);
 
             return redirect()->guest(route('home'));
         }
@@ -34,7 +48,7 @@ class AzureAuthentication
             ->find((int) $currentUserId);
 
         if ($currentUser === null) {
-            $request->session()->forget('current_user_id');
+            $request->session()->forget(['current_user_id', 'impersonator_user_id']);
 
             return redirect()->guest(route('home'));
         }

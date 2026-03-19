@@ -29,8 +29,11 @@ LeaveBoard gives teams a shared planning surface for time off and availability.
 ## Highlights
 
 - Planner navigation across the current month and the following months
+- Planner support for drag selection and Add by date request entry
 - Department, site, and personnel filtering
 - Pending request editing before approval
+- Planner overwrite warnings when a new request replaces existing days
+- Planner clearing for the current user's approved or pending absences
 - Approval and rejection tracking with manager decision reasons
 - Azure tenant sign-in with optional manual email/password accounts
 - Dedicated manual sign-in page, even before manual accounts exist
@@ -150,7 +153,7 @@ The sidebar contains an expandable Admin group with links for:
 
 ### User Information
 
-- Manual user creation
+- Manual user creation from a modal flow
 - Admin access delegation
 - Activation and deactivation controls
 - User list with department, manager, and access status
@@ -158,6 +161,7 @@ The sidebar contains an expandable Admin group with links for:
 ### Application Settings
 
 - Application name updates
+- Application timezone updates
 - Absence-option creation, editing, and deletion
 - Request log entry count with quick access to the full log
 

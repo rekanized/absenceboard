@@ -25,9 +25,15 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! $this->app->isProduction());
 
         $applicationName = Setting::valueFor('app_name');
+        $applicationTimezone = Setting::valueFor('app_timezone');
 
         if ($applicationName !== null && $applicationName !== '') {
             Config::set('app.name', $applicationName);
+        }
+
+        if ($applicationTimezone !== null && $applicationTimezone !== '') {
+            Config::set('app.timezone', $applicationTimezone);
+            date_default_timezone_set($applicationTimezone);
         }
     }
 }

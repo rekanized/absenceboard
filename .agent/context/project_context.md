@@ -14,6 +14,7 @@ LeaveBoard is an internal leave-planning application for visualising team availa
 ### Planner
 - Multi-month timeline covering the selected month and the following two months
 - Drag/range selection for request creation
+- Add by date request creation for the current user
 - Department grouping with expandable user lists
 - Department, site, and personnel filtering
 - Current-user row spotlight and jump-back behavior
@@ -28,15 +29,17 @@ LeaveBoard is an internal leave-planning application for visualising team availa
 ### Admin
 - Expandable sidebar admin navigation
 - Dedicated `/admin/authentication` page for Azure configuration and verification
-- Dedicated `/admin/users` page for manual-user creation, admin delegation, and user status management
-- Dedicated `/admin/settings` page for application settings and absence-option management
+- Dedicated `/admin/users` page for modal-backed manual-user creation, admin delegation, and user status management
+- Dedicated `/admin/settings` page for application name, application timezone, and absence-option management
 - Dedicated `/admin/logs` page for request log browsing
 
 ## Workflow Rules
 - Requests from users with a manager are submitted as pending.
 - Requests from users without a manager are approved immediately.
 - Multi-day requests are grouped by a shared request UUID.
-- Pending requests can be edited or deleted by the request owner before approval.
+- Pending requests can be edited by the request owner before approval.
+- Applying a new absence across dates that already have absences replaces the owner's existing days after warning in the planner.
+- Users can clear their own approved or pending absences from the planner.
 - Managers can approve or reject requests from direct reports.
 - Rejections require a manager decision reason.
 

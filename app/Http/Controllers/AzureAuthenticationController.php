@@ -67,6 +67,7 @@ class AzureAuthenticationController extends Controller
         }
 
         $request->session()->regenerate();
+        $request->session()->forget('impersonator_user_id');
         $request->session()->put('current_user_id', $user->id);
 
         return redirect()->intended(route('planner'));
@@ -74,7 +75,7 @@ class AzureAuthenticationController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        $request->session()->forget(['current_user_id', 'azure_auth_nonce', 'azure_auth_state']);
+        $request->session()->forget(['current_user_id', 'impersonator_user_id', 'azure_auth_nonce', 'azure_auth_state']);
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

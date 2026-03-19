@@ -148,6 +148,21 @@ class VacationPlanner extends Component
 
         $absenceOptionsByCode = $absenceOptions->keyBy('code');
 
+        $currentUserAbsenceLookup = $currentUser
+            ? Absence::query()
+                ->where('user_id', $currentUser->id)
+                ->whereIn('status', [Absence::STATUS_APPROVED, Absence::STATUS_PENDING])
+                ->get(['date', 'type', 'status'])
+                ->mapWithKeys(fn (Absence $absence) => [
+                    $absence->date => [
+                        'type' => $absence->type,
+                        'status' => $absence->status,
+                        'label' => $absenceOptionsByCode->get($absence->type)?->label ?? $absence->type,
+                    ],
+                ])
+                ->all()
+            : [];
+
         $departments = Department::query()
         ->select(['id', 'name'])
         ->with(['users' => function ($query) use ($start, $end, $searchTerm, $selectedManagers) {
@@ -219,6 +234,7 @@ class VacationPlanner extends Component
             'managers' => $managers,
             'periodLabel' => $this->formatPeriodLabel($start, $end),
             'currentUser' => $currentUser,
+            'currentUserAbsenceLookup' => $currentUserAbsenceLookup,
             'absenceOptions' => $absenceOptions,
             'absenceOptionsByCode' => $absenceOptionsByCode,
             'pendingRequests' => $this->pendingRequestsForCurrentUser(),
@@ -237,16 +253,22 @@ class VacationPlanner extends Component
         $this->absenceType = $type;
     }
 
-    public function applyAbsence(int $userId, array $dateRange, string $type, string $reason): void
+    public function applyAbsence(int $userId, array $dateRange, string $type, string $reason): array
     {
         $this->syncCurrentUser();
 
         if ($this->currentUserId === null || $this->currentUserId !== $userId) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'You can only create absences for your own account.',
+            ];
         }
 
         if (! $this->absenceOptionExists($type)) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'The selected absence type is no longer available.',
+            ];
         }
 
         $currentUser = User::query()
@@ -255,32 +277,45 @@ class VacationPlanner extends Component
             ->find($this->currentUserId);
 
         if (! $currentUser) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'Your user account is no longer active.',
+            ];
         }
 
         $dates = $this->normalizeDates($dateRange);
 
         if ($dates === []) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'Please choose a valid date range.',
+            ];
         }
 
-        $conflictingDates = Absence::query()
+        $replacedAbsences = Absence::query()
             ->where('user_id', $userId)
             ->whereIn('date', $dates)
-            ->pluck('date');
-
-        if ($conflictingDates->isNotEmpty()) {
-            session()->flash('status', 'Unable to create the request because one or more selected dates already have an absence.');
-
-            return;
-        }
+            ->orderBy('date')
+            ->get();
 
         $status = $currentUser->manager_id ? Absence::STATUS_PENDING : Absence::STATUS_APPROVED;
         $requestUuid = (string) Str::uuid();
         $trimmedReason = trim($reason) !== '' ? trim($reason) : null;
 
-        DB::transaction(function () use ($dates, $requestUuid, $reason, $status, $trimmedReason, $type, $userId) {
+        DB::transaction(function () use ($dates, $replacedAbsences, $requestUuid, $reason, $status, $trimmedReason, $type, $userId) {
             $timestamp = now();
+
+            if ($replacedAbsences->isNotEmpty()) {
+                Absence::query()
+                    ->whereIn('id', $replacedAbsences->pluck('id')->all())
+                    ->delete();
+
+                $this->recordRequestLog('deleted', $replacedAbsences, $this->currentUserId, [
+                    'source' => 'planner_override',
+                    'replaced_by_type' => $type,
+                    'replaced_statuses' => $replacedAbsences->pluck('status')->filter()->unique()->values()->all(),
+                ]);
+            }
 
             Absence::query()->insert(
                 collect($dates)
@@ -309,63 +344,109 @@ class VacationPlanner extends Component
             $this->recordRequestLog('submitted', $storedAbsences, $this->currentUserId, [
                 'approval_flow' => $status === Absence::STATUS_APPROVED ? 'automatic' : 'manager',
                 'submitted_reason' => $reason,
+                'overrode_existing_absences' => $replacedAbsences->isNotEmpty(),
+                'overridden_dates' => $replacedAbsences->pluck('date')->values()->all(),
             ], $status);
         });
 
         $this->reason = '';
         $this->absenceType = $type;
+
+        $createdCount = count($dates);
+        $replacedCount = $replacedAbsences->count();
+
+        if ($replacedCount > 0) {
+            return [
+                'tone' => 'success',
+                'message' => sprintf(
+                    '%d %s applied to the planner. %d existing %s replaced.',
+                    $createdCount,
+                    $createdCount === 1 ? 'day was' : 'days were',
+                    $replacedCount,
+                    $replacedCount === 1 ? 'day was' : 'days were'
+                ),
+            ];
+        }
+
+        return [
+            'tone' => 'success',
+            'message' => $createdCount === 1
+                ? '1 day was added to the planner.'
+                : sprintf('%d days were added to the planner.', $createdCount),
+        ];
     }
 
-    public function applyAbsenceSpan(int $userId, ?string $startDate, ?string $endDate, string $type, string $reason): void
+    public function applyAbsenceSpan(int $userId, ?string $startDate, ?string $endDate, string $type, string $reason): array
     {
         $dates = $this->expandDateRange($startDate, $endDate);
 
         if ($dates === []) {
-            session()->flash('status', 'Please choose a valid date range.');
-
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'Please choose a valid date range.',
+            ];
         }
 
-        $this->applyAbsence($userId, $dates, $type, $reason);
+        return $this->applyAbsence($userId, $dates, $type, $reason);
     }
 
-    public function removeAbsence(int $userId, array $dateRange): void
+    public function removeAbsence(int $userId, array $dateRange): array
     {
         $this->syncCurrentUser();
 
         if ($this->currentUserId === null || $this->currentUserId !== $userId) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'You can only clear your own absences.',
+            ];
         }
 
         $dates = $this->normalizeDates($dateRange);
 
         if ($dates === []) {
-            return;
+            return [
+                'tone' => 'warning',
+                'message' => 'No dates were selected.',
+            ];
         }
 
-        $absencesToDelete = Absence::query()
+        $selectedAbsences = Absence::query()
             ->where('user_id', $userId)
-            ->where('status', Absence::STATUS_PENDING)
             ->whereIn('date', $dates)
+            ->whereIn('status', [Absence::STATUS_PENDING, Absence::STATUS_APPROVED])
+            ->get(['id', 'status']);
+
+        $absencesToDelete = $selectedAbsences->pluck('id');
+
+        if ($absencesToDelete->isEmpty()) {
+            return [
+                'tone' => 'info',
+                'message' => 'The selected dates are already clear.',
+            ];
+        }
+
+        $absencesForLog = Absence::query()
+            ->whereIn('id', $absencesToDelete->all())
             ->orderBy('date')
             ->get();
 
-        if ($absencesToDelete->isEmpty()) {
-            return;
-        }
-
-        DB::transaction(function () use ($absencesToDelete, $dates, $userId) {
+        DB::transaction(function () use ($absencesForLog, $absencesToDelete) {
             Absence::query()
-                ->where('user_id', $userId)
-                ->where('status', Absence::STATUS_PENDING)
-                ->whereIn('date', $dates)
+                ->whereIn('id', $absencesToDelete->all())
                 ->delete();
 
-            $this->recordRequestLog('deleted', $absencesToDelete, $this->currentUserId, [
+            $this->recordRequestLog('deleted', $absencesForLog, $this->currentUserId, [
                 'source' => 'planner_grid',
-                'deleted_statuses' => $absencesToDelete->pluck('status')->filter()->unique()->values()->all(),
+                'deleted_statuses' => $absencesForLog->pluck('status')->filter()->unique()->values()->all(),
             ]);
         });
+
+        return [
+            'tone' => 'success',
+            'message' => $absencesForLog->count() === 1
+                ? '1 day was cleared from the planner.'
+                : sprintf('%d days were cleared from the planner.', $absencesForLog->count()),
+        ];
     }
 
     public function approveRequest(string $requestUuid): void

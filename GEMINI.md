@@ -4,15 +4,17 @@
 LeaveBoard is an internal leave-planning application built with Laravel and Livewire. It combines a multi-month absence planner, a current-user profile workspace, and a lightweight admin area for absence-option and application settings management.
 
 ## Current Scope
-- Planner page with department grouping, filters, drag/range selection, and holiday markers
+- Planner page with department grouping, filters, drag/range selection, Add by date entry, and holiday markers
 - Approval workflow with pending, approved, and rejected requests
 - Profile page for holiday-country and theme preferences
-- Admin page for impersonation, branding, absence options, and request logs
+- Admin area for authentication settings, user management, application naming/timezone, absence options, and request logs
 
 ## Important Domain Rules
 - Users with a manager submit requests as `pending`.
 - Users without a manager are auto-approved.
 - Multi-day requests are grouped by `absences.request_uuid`.
+- Planner submissions can replace the current user's existing approved or pending days after warning.
+- Planner clearing can remove the current user's approved or pending days.
 - Rejections require a manager decision reason stored in `absences.decision_reason`.
 - Holiday rendering depends on `users.holiday_country` and `holidays.country_code`.
 - Theme preference is persisted per user and shared across planner, profile, and admin pages.

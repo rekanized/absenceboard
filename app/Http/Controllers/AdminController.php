@@ -8,6 +8,7 @@ use App\Models\AbsenceOption;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\AzureAuthenticationService;
+use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,8 @@ class AdminController extends Controller
                     return $option;
                 }),
             'applicationName' => Setting::valueFor('app_name', config('app.name')),
+            'applicationTimezone' => Setting::valueFor('app_timezone', config('app.timezone')),
+            'timezoneOptions' => DateTimeZone::listIdentifiers(),
             'requestLogCount' => AbsenceRequestLog::query()->count(),
         ]);
     }
@@ -59,19 +62,127 @@ class AdminController extends Controller
 
     public function users(Request $request): View
     {
+        $search = trim((string) $request->input('search', ''));
+        $department = trim((string) $request->input('department', ''));
+        $location = trim((string) $request->input('location', ''));
+        $status = trim((string) $request->input('status', ''));
+        $access = trim((string) $request->input('access', ''));
+        $statusOptions = [
+            'active' => 'Active',
+            'inactive' => 'Inactive',
+        ];
+        $accessOptions = [
+            'admin' => 'Admin',
+            'standard' => 'Standard',
+        ];
+
         $users = User::query()
             ->select(['id', 'department_id', 'manager_id', 'name', 'email', 'azure_oid', 'password', 'location', 'theme_preference', 'is_admin', 'is_active'])
             ->with(['department:id,name', 'manager:id,name'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($department !== '', function ($query) use ($department) {
+                $query->whereHas('department', function ($departmentQuery) use ($department) {
+                    $departmentQuery->where('name', $department);
+                });
+            })
+            ->when($location !== '', function ($query) use ($location) {
+                $query->where('location', $location);
+            })
+            ->when(isset($statusOptions[$status]), function ($query) use ($status) {
+                $query->where('is_active', $status === 'active');
+            })
+            ->when(isset($accessOptions[$access]), function ($query) use ($access) {
+                $query->where('is_admin', $access === 'admin');
+            })
+            ->orderBy('name')
+            ->get();
+
+        $managerOptions = User::query()
+            ->select(['id', 'name', 'is_active'])
+            ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
         return view('admin.users', [
             ...$this->baseAdminViewData($request),
             'users' => $users,
-            'activeUserCount' => $users->where('is_active', true)->count(),
-            'adminCount' => $users->where('is_admin', true)->count(),
+            'managerOptions' => $managerOptions,
+            'search' => $search,
+            'selectedDepartment' => $department,
+            'selectedLocation' => $location,
+            'selectedStatus' => $status,
+            'selectedAccess' => $access,
+            'statusOptions' => $statusOptions,
+            'accessOptions' => $accessOptions,
+            'activeUserCount' => User::query()->active()->count(),
+            'adminCount' => User::query()->admins()->count(),
             'departmentOptions' => Department::query()->orderBy('name')->pluck('name'),
+            'locationOptions' => User::query()
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->orderBy('location')
+                ->distinct()
+                ->pluck('location'),
         ]);
+    }
+
+    public function impersonateUser(Request $request, User $user): RedirectResponse
+    {
+        $currentUser = $this->currentUserFromSession($request);
+
+        abort_if($currentUser === null || ! $currentUser->is_admin, 403);
+
+        if ($request->session()->has('impersonator_user_id')) {
+            return redirect()
+                ->route('admin.users')
+                ->withErrors(['user_impersonation' => 'Stop the current impersonation before starting another one.']);
+        }
+
+        if (! $user->is_active) {
+            return redirect()
+                ->route('admin.users')
+                ->withErrors(['user_impersonation' => 'Only active users can be impersonated.']);
+        }
+
+        if ($currentUser->id === $user->id) {
+            return redirect()
+                ->route('admin.users')
+                ->withErrors(['user_impersonation' => 'Choose another user to impersonate.']);
+        }
+
+        AbsenceRequestLog::query()->create([
+            'request_uuid' => null,
+            'user_id' => $user->id,
+            'actor_id' => $currentUser->id,
+            'action' => AbsenceRequestLog::ACTION_IMPERSONATION_STARTED,
+            'absence_type' => null,
+            'status' => 'active',
+            'date_start' => null,
+            'date_end' => null,
+            'date_count' => 0,
+            'reason' => sprintf('%s started an impersonation session for support work.', $currentUser->name),
+            'metadata' => [
+                'source' => 'admin_impersonation',
+                'impersonated_user_id' => $user->id,
+                'impersonated_user_name' => $user->name,
+                'impersonator_user_id' => $currentUser->id,
+                'impersonator_user_name' => $currentUser->name,
+            ],
+        ]);
+
+        $request->session()->regenerate();
+        $request->session()->put('impersonator_user_id', $currentUser->id);
+        $request->session()->put('current_user_id', $user->id);
+
+        return redirect()
+            ->route('profile.show')
+            ->with('status', sprintf('Now impersonating %s.', $user->name));
     }
 
     public function logs(Request $request): View
@@ -129,6 +240,25 @@ class AdminController extends Controller
         return redirect()
             ->route('admin.settings')
             ->with('status', 'Application name updated.');
+    }
+
+    public function updateApplicationTimezone(Request $request): RedirectResponse
+    {
+        $timezoneOptions = DateTimeZone::listIdentifiers();
+
+        $request->merge([
+            'app_timezone' => trim((string) $request->input('app_timezone')),
+        ]);
+
+        $data = $request->validate([
+            'app_timezone' => ['required', 'string', Rule::in($timezoneOptions)],
+        ]);
+
+        Setting::writeValue('app_timezone', $data['app_timezone']);
+
+        return redirect()
+            ->route('admin.settings')
+            ->with('status', 'Application timezone updated.');
     }
 
     public function updateAzureConfiguration(Request $request, AzureAuthenticationService $azureAuthentication): RedirectResponse
@@ -204,7 +334,7 @@ class AdminController extends Controller
         });
 
         if (! $shouldActivate && (int) $request->session()->get('current_user_id') === $user->id) {
-            $request->session()->forget('current_user_id');
+            $request->session()->forget(['current_user_id', 'impersonator_user_id']);
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
@@ -450,7 +580,7 @@ class AdminController extends Controller
             ->active()
             ->select(['id', 'department_id', 'manager_id', 'name', 'email', 'location', 'holiday_country', 'theme_preference', 'is_admin'])
             ->with(['department:id,name', 'manager:id,name'])
-            ->find($currentUserId);
+            ->find((int) $currentUserId);
     }
 
     /**

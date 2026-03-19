@@ -72,7 +72,8 @@ class PageRenderingEagerLoadingTest extends TestCase
             ->withSession(['current_user_id' => $manager->id])
             ->get(route('admin.settings'))
             ->assertOk()
-            ->assertSeeText('Maja Manager');
+            ->assertSeeText('Maja Manager')
+            ->assertSeeText('Create absence option');
 
         $this
             ->withSession(['current_user_id' => $manager->id])
@@ -84,7 +85,8 @@ class PageRenderingEagerLoadingTest extends TestCase
             ->withSession(['current_user_id' => $manager->id])
             ->get(route('admin.users'))
             ->assertOk()
-            ->assertSeeText('Users and permissions');
+            ->assertSeeText('Users and permissions')
+            ->assertSeeText('Create manual user');
 
         $this
             ->withSession(['current_user_id' => $manager->id])

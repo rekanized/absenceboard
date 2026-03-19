@@ -6,6 +6,7 @@ Use this file as the short entry point for repository context. Detailed project 
 ## Product Snapshot
 LeaveBoard is a Laravel 13 and Livewire 4 leave-planning application with:
 - a multi-month planner,
+- drag and date-based absence entry,
 - manager-based approval flow,
 - a current-user profile page,
 - an internal admin workspace,
@@ -14,8 +15,11 @@ LeaveBoard is a Laravel 13 and Livewire 4 leave-planning application with:
 ## Important Business Rules
 - Requests from users with a manager are created as pending.
 - Requests from users without a manager are auto-approved.
+- Planner users may replace their own existing planner days after an overwrite warning.
+- Planner users may clear their own approved or pending absences.
 - Rejections require a decision reason.
 - Absence options are database-driven and editable from admin.
+- Application timezone is admin-configurable.
 - Theme and holiday-country preferences are user-specific.
 
 ## Key Files

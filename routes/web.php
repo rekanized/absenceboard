@@ -26,6 +26,7 @@ Route::middleware('azure-auth')->group(function () {
 	Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
 	Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 	Route::patch('/profile/theme', [ProfileController::class, 'updateTheme'])->name('profile.theme.update');
+	Route::post('/profile/impersonation/leave', [ProfileController::class, 'leaveImpersonation'])->name('profile.impersonation.leave');
 
 	Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 		Route::get('/', [AdminController::class, 'index'])->name('index');
@@ -34,8 +35,10 @@ Route::middleware('azure-auth')->group(function () {
 		Route::get('/users', [AdminController::class, 'users'])->name('users');
 		Route::get('/logs', [AdminController::class, 'logs'])->name('logs');
 		Route::post('/application-name', [AdminController::class, 'updateApplicationName'])->name('application-name.update');
+		Route::post('/application-timezone', [AdminController::class, 'updateApplicationTimezone'])->name('application-timezone.update');
 		Route::post('/azure-auth', [AdminController::class, 'updateAzureConfiguration'])->name('azure-auth.update');
 		Route::post('/manual-users', [AdminController::class, 'storeManualUser'])->name('manual-users.store');
+		Route::post('/users/{user}/impersonate', [AdminController::class, 'impersonateUser'])->name('users.impersonate');
 		Route::patch('/users/{user}/activity', [AdminController::class, 'updateUserActivity'])->name('users.activity');
 		Route::patch('/users/{user}/admin', [AdminController::class, 'updateUserAdmin'])->name('users.admin');
 		Route::patch('/users/{user}/manager', [AdminController::class, 'updateUserManager'])->name('users.manager');
