@@ -24,6 +24,9 @@ if [ "${ROW_COUNT:-0}" = "0" ]; then
 fi
 
 php artisan storage:link || true
-php artisan optimize:clear
+php artisan optimize
+
+# Ensure correct permissions for SQLite
+chown -R www-data:www-data storage bootstrap/cache database
 
 exec "$@"

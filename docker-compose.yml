@@ -6,6 +6,10 @@ services:
     restart: unless-stopped
     expose:
       - "9000"
+    volumes:
+      - .:/app
+      - ./database:/app/database
+      - ./storage:/app/storage
 
   nginx:
     image: nginx:1.27-alpine
