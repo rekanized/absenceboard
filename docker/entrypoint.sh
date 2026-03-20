@@ -15,12 +15,21 @@ if ! grep -q '^APP_KEY=base64:' .env; then
     php artisan key:generate --no-interaction --force
 fi
 
-php artisan migrate --force --no-interaction
+# Run migrations
+echo "Running migrations..."
+php artisan migrate --force --no-interaction || { echo "Migration failed!"; exit 1; }
 
-ROW_COUNT=$(php artisan tinker --execute="echo \Illuminate\Support\Facades\DB::table('users')->count();" | tr -d '\r\n')
+# Seed if users table is empty
+echo "Checking if seeding is required..."
+USER_COUNT=$(php artisan tinker --execute="try { echo \App\Models\User::count(); } catch (\Exception \$e) { echo -1; }" | tr -d '\r\n')
 
-if [ "${ROW_COUNT:-0}" = "0" ]; then
+if [ "${USER_COUNT:- -1}" = "-1" ]; then
+    echo "Users table missing or error during check. Migrations might have failed."
+elif [ "$USER_COUNT" = "0" ]; then
+    echo "Table empty, running seeders..."
     php artisan db:seed --force --no-interaction
+else
+    echo "Database already has $USER_COUNT users. Skipping seed."
 fi
 
 php artisan storage:link || true
