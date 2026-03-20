@@ -43,3 +43,33 @@ AbsenceBoard is an internal leave-planning application built with Laravel and Li
 - `.agent/context/project_context.md`
 - `.agent/context/architecture.md`
 - `.agent/context/tech_stack.md`
+
+## User Guides
+
+### Local Setup (Manual)
+1. Install dependencies: `composer install`
+2. Prepare environment: `cp .env.example .env`
+3. Prepare database: `touch database/database.sqlite && php artisan key:generate`
+4. Migrate and Seed: `php artisan migrate:fresh --seed`
+5. Link storage: `php artisan storage:link`
+6. Start: `php artisan serve`
+
+### Authentication Setup
+AbsenceBoard supports two startup paths reachable from the landing page.
+
+#### Azure Setup (Recommended)
+1. Visit the first-run setup page on a fresh install.
+2. Enter Azure Tenant ID, Client ID, and Secret.
+3. Save and sign in with Microsoft. The first person to sign in becomes an admin.
+
+#### Manual Startup
+1. Visit the first-run setup page.
+2. Use the manual form to create the first admin account.
+3. Sign in via the "Manual sign-in" path on the landing page.
+
+### Admin Workspace
+Accessible at `/admin` for users with admin permissions:
+- **Authentication**: Azure tenant management.
+- **User Information**: Create users, delegate admin status, and manage deactivation.
+- **Application Settings**: Change app name, timezone, and manage absence options.
+- **Request Log**: View and audit all absence requests across the system.
